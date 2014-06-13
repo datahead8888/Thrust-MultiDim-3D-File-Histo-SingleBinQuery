@@ -33,59 +33,59 @@ thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 	__int64 startTime = freqLi.QuadPart;
 
 
-	thrust::device_vector<int> device_input(numbers.begin(), numbers.end());
-	thrust::device_vector<int> device_output(numbers.size());
+	thrust::device_vector<int> device_numbers(numbers.begin(), numbers.end());
+	//thrust::device_vector<int> device_output(numbers.size());
 
 	#ifdef IS_LOGGING
 	cout << "Running transform:" << endl;
 	#endif
 
 
-    thrust::transform(device_input.begin(), device_input.end(), device_output.begin(), device_output.begin(), BinFinder());
+    thrust::transform(device_numbers.begin(), device_numbers.end(), device_numbers.begin(), device_numbers.begin(), BinFinder());
 	
 	#ifdef IS_LOGGING
 	cout << endl;
 	cout << "Printing bins for input elements" << endl;
-	for (int i = 0; i < device_output.size(); i++)
+	for (int i = 0; i < device_numbers.size(); i++)
 	{
-		cout << device_output[i] << " ";
+		cout << device_numbers[i] << " ";
 	}
 	cout << endl;
 	#endif
 
-	thrust::sort(device_output.begin(), device_output.end());
+	thrust::sort(device_numbers.begin(), device_numbers.end());
 
 	#ifdef IS_LOGGING
 	cout << "Printing sorted bins for input elements" << endl;
-	for (int i = 0; i < device_output.size(); i++)
+	for (int i = 0; i < device_numbers.size(); i++)
 	{
-		cout << device_output[i] << " ";
+		cout << device_numbers[i] << " ";
 	}
 	cout << endl;
 	#endif
 
-	thrust::device_vector<int> differences(numbers.size());
-	thrust::adjacent_difference(device_output.begin(), device_output.end(), differences.begin());
+	//thrust::device_vector<int> differences(numbers.size());
+	thrust::adjacent_difference(device_numbers.begin(), device_numbers.end(), device_numbers.begin());
 
 	#ifdef IS_LOGGING
 	cout << "Printing adjacent differences" << endl;
-	for (int i = 0; i < differences.size(); i++)
+	for (int i = 0; i < device_numbers.size(); i++)
 	{
-		cout << differences[i] << " ";
+		cout << device_numbers[i] << " ";
 	}
 	cout << endl;
 	#endif
 
-	thrust::device_vector<int> modifiedIndexes(numbers.size());
+	//thrust::device_vector<int> modifiedIndexes(numbers.size());
 	thrust::counting_iterator<int>  indexes(0);
 	
-	thrust::transform(differences.begin(), differences.end(), indexes, modifiedIndexes.begin(), IndexFinder());
+	thrust::transform(device_numbers.begin(), device_numbers.end(), indexes, device_numbers.begin(), IndexFinder());
 
 	#ifdef IS_LOGGING
 	cout << "Printing special indexes" << endl;
-	for (int i = 0; i < modifiedIndexes.size(); i++)
+	for (int i = 0; i < device_numbers.size(); i++)
 	{
-		cout << modifiedIndexes[i] << " ";
+		cout << device_numbers[i] << " ";
 	}
 	cout << endl;
 	#endif
@@ -96,14 +96,14 @@ thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 	typedef thrust::zip_iterator<DviTuple> ZipDviTuple;
 
 
-	ZipDviTuple endZipped = thrust::remove(modifiedIndexes.begin(), modifiedIndexes.end(), -1);
+	ZipDviTuple endZipped = thrust::remove(device_numbers.begin(), device_numbers.end(), -1);
 	DviTuple endTuple = endZipped.get_iterator_tuple();
 	Dvi end = thrust::get<0>(endTuple);
 
 	
 	#ifdef IS_LOGGING
 	cout << "Printing special indexes after removals" << endl;
-	for (Dvi it = modifiedIndexes.begin(); it != end; it++)
+	for (Dvi it = device_numbers.begin(); it != end; it++)
 	{
 		int value = *it;
 		cout << value << " ";
@@ -111,9 +111,9 @@ thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 	cout << endl;
 	#endif
 
-	thrust::device_vector<int> modifiedIndexes2(modifiedIndexes.begin(), end);
+	thrust::device_vector<int> modifiedIndexes2(device_numbers.begin(), end);
 
-	modifiedIndexes2.push_back(modifiedIndexes.size());
+	modifiedIndexes2.push_back(device_numbers.size());
 	
 	#ifdef IS_LOGGING
 	cout << "Printing special indexes after size insertion" << endl;
@@ -125,19 +125,19 @@ thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 	#endif
 	
 
-	thrust::device_vector<int> counts(modifiedIndexes2.size());
-	thrust::adjacent_difference(modifiedIndexes2.begin(), modifiedIndexes2.end(), counts.begin());
+	//thrust::device_vector<int> counts(modifiedIndexes2.size());
+	thrust::adjacent_difference(modifiedIndexes2.begin(), modifiedIndexes2.end(), modifiedIndexes2.begin());
 
 	#ifdef IS_LOGGING
 	cout << "Printing (semi) final counts:" << endl;
-	for (int i = 0; i < counts.size(); i++)
+	for (int i = 0; i < modifiedIndexes2.size(); i++)
 	{
-		cout << counts[i] << " ";
+		cout << modifiedIndexes2[i] << " ";
 	}
 	cout << endl;
 	#endif
 
-	thrust::host_vector<int> finalCounts(counts.begin() + 1, counts.end());
+	thrust::host_vector<int> finalCounts(modifiedIndexes2.begin() + 1, modifiedIndexes2.end());
 	
 	#ifdef IS_LOGGING
 	cout << "Printing (semi) final counts:" << endl;
@@ -170,7 +170,7 @@ thrust::host_vector<int> doHistogramGPUB(std::vector<int> numbers)
 	__int64 startTime = freqLi.QuadPart;
 
 
-	thrust::device_vector<int> device_input(numbers.begin(), numbers.end());
+	thrust::device_vector<int> device_numbers(numbers.begin(), numbers.end());
 	thrust::device_vector<int> device_output(numbers.size());
 
 	#ifdef IS_LOGGING
@@ -178,7 +178,7 @@ thrust::host_vector<int> doHistogramGPUB(std::vector<int> numbers)
 	#endif
 
 
-    thrust::transform(device_input.begin(), device_input.end(), device_output.begin(), device_output.begin(), BinFinder());
+    thrust::transform(device_numbers.begin(), device_numbers.end(), device_numbers.begin(), device_numbers.begin(), BinFinder());
 
 	#ifdef IS_LOGGING
 	cout << endl;
@@ -190,7 +190,7 @@ thrust::host_vector<int> doHistogramGPUB(std::vector<int> numbers)
 	cout << endl;
 	#endif
 
-	thrust::sort(device_output.begin(), device_output.end());
+	thrust::sort(device_numbers.begin(), device_numbers.end());
 
 	#ifdef IS_LOGGING
 	cout << "Printing sorted bins for input elements" << endl;
@@ -205,13 +205,13 @@ thrust::host_vector<int> doHistogramGPUB(std::vector<int> numbers)
 	thrust::constant_iterator<int> cit(1);
 	thrust::device_vector<int> newKeys(4);
 	thrust::device_vector<int> newValues(4);
-	thrust::reduce_by_key(device_output.begin(), device_output.end(), cit, newKeys.begin(), newValues.begin());
+	thrust::reduce_by_key(device_numbers.begin(), device_numbers.end(), cit, newKeys.begin(), device_numbers.begin());
 
 	#ifdef IS_LOGGING
 	cout << "Printing (semi?) final bins" << endl;
-	for (int i = 0; i < newValues.size(); i++)
+	for (int i = 0; i < device_numbers.size(); i++)
 	{
-		cout << newValues[i] << " ";
+		cout << device_numbers[i] << " ";
 	}
 	cout << endl;
 	#endif

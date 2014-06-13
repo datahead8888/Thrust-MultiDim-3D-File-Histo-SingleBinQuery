@@ -33,12 +33,13 @@ int main(int argc, char *argv[])
 	#endif
 
 
+	thrust::host_vector<int> resultVector3 = doHistogramGPUB(numbers);
+
 	thrust::host_vector<int> resultVector1 = doHistogramGPU(numbers);
 
 	std::vector<int> resultVector2 = doHistogramCPU(numbers);
 
-	thrust::host_vector<int> resultVector3 = doHistogramGPUB(numbers);
-
+	
 	cout << "Histogram from GPU:" << endl;
 	for (int i = 0; i < resultVector1.size(); i++)
 	{
