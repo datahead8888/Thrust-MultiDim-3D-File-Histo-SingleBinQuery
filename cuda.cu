@@ -1,4 +1,5 @@
 #include "cuda.h"
+#include "cudaTimer.h"
 
 #include <iostream>
 
@@ -20,6 +21,8 @@ using namespace std;
 
 thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 {
+	CudaTimer cudaTimer;
+
 	//Reference: http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
 	
 	//Timing code start
@@ -35,6 +38,7 @@ thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 	cout << endl;
 	#endif
 	
+	cudaTimer.startTimer();
 	//Set up device vector
 	thrust::device_vector<int> device_numbers(numbers.begin(), numbers.end());
 
@@ -159,6 +163,10 @@ thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 	cout << endl;
 	#endif
 
+	cudaTimer.stopTimer();
+
+	cout << "GPU time elapsed for GPU method #1: " << cudaTimer.getTimeElapsed() << endl;
+
 	//Timing code end
 	QueryPerformanceCounter(&freqLi);
 	double timePassed = double(freqLi.QuadPart-startTime) / pcFreq;
@@ -171,6 +179,9 @@ thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 
 thrust::host_vector<int> doHistogramGPUB(std::vector<int> numbers)
 {
+	CudaTimer cudaTimer;
+
+
 	//Reference: http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
 	
 	//Timing code start
@@ -185,6 +196,8 @@ thrust::host_vector<int> doHistogramGPUB(std::vector<int> numbers)
 	cout << "Running histogram GPU method #2..." << endl;
 	cout << endl;
 	#endif
+
+	cudaTimer.startTimer();
 
 	//Set up device vector
 	thrust::device_vector<int> device_numbers(numbers.begin(), numbers.end());
@@ -237,6 +250,10 @@ thrust::host_vector<int> doHistogramGPUB(std::vector<int> numbers)
 	cout << endl;
 	#endif
 
+	cudaTimer.stopTimer();
+
+	cout << "GPU time elapsed for GPU method #2: " << cudaTimer.getTimeElapsed() << endl;
+	
 	//Timing code end
 	QueryPerformanceCounter(&freqLi);
 	double timePassed = double(freqLi.QuadPart-startTime) / pcFreq;
