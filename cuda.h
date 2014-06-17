@@ -13,11 +13,12 @@ thrust::host_vector<int> doHistogramGPUB(std::vector<int> numberse);
 std::vector<int> doHistogramCPU(std::vector<int> numbers);
 
 
-//#define IS_LOGGING 1
+#define IS_LOGGING 1
 
 
 struct BinFinder
 {
+	//This kernel assigns each element to a bin group
 	__host__ __device__ int operator()(const int & x, const int & y) const
 	{
 		//return x + y;
@@ -55,9 +56,10 @@ struct BinFinder
 
 struct IndexFinder
 {
+	//This kernel looks at a bin element and assigns the counting index if it is not 0 and assigns -1 if it is 0
 	__host__ __device__ int operator()(const int & x, const int & y) const
 	{
-		//if (x == 1)
+		//if (x != 0)
 		//{
 		//	return y;
 		//}
@@ -65,7 +67,7 @@ struct IndexFinder
 		//{
 		//	return -1;
 		//}
-		return (x == 1) * y + (x == 0) * -1;
+		return (x != 0) * y + (x == 0) * -1;
 		
 		
 		

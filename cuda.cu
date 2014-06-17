@@ -18,13 +18,11 @@
 using namespace std;
 
 
-
-
-
-
 thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 {
 	//Reference: http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
+	
+	//Timing code start
 	LARGE_INTEGER freqLi;
 	QueryPerformanceFrequency(&freqLi);
 
@@ -32,15 +30,19 @@ thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 	QueryPerformanceCounter(&freqLi);
 	__int64 startTime = freqLi.QuadPart;
 
-
-	thrust::device_vector<int> device_numbers(numbers.begin(), numbers.end());
-	//thrust::device_vector<int> device_output(numbers.size());
-
 	#ifdef IS_LOGGING
-	cout << "Running transform:" << endl;
+	cout << "Running histogram GPU method #1..." << endl;
+	cout << endl;
 	#endif
+	
+	//Set up device vector
+	thrust::device_vector<int> device_numbers(numbers.begin(), numbers.end());
 
-
+	//Step 1: Locate the bins for each of the elements
+	#ifdef IS_LOGGING
+	cout << "Running bin locater transform:" << endl;
+	#endif
+	
     thrust::transform(device_numbers.begin(), device_numbers.end(), device_numbers.begin(), device_numbers.begin(), BinFinder());
 	
 	#ifdef IS_LOGGING
@@ -53,6 +55,7 @@ thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 	cout << endl;
 	#endif
 
+	//Step 2: Sort those bins
 	thrust::sort(device_numbers.begin(), device_numbers.end());
 
 	#ifdef IS_LOGGING
@@ -64,7 +67,7 @@ thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 	cout << endl;
 	#endif
 
-	//thrust::device_vector<int> differences(numbers.size());
+	//Step 3: Find the difference between each pair of consecutive sorted bin elements.  This helps us id which elements are at the start of some sort of group (they will have values other than 0).
 	thrust::adjacent_difference(device_numbers.begin(), device_numbers.end(), device_numbers.begin());
 
 	#ifdef IS_LOGGING
@@ -76,7 +79,8 @@ thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 	cout << endl;
 	#endif
 
-	//thrust::device_vector<int> modifiedIndexes(numbers.size());
+
+	//Step 4: In those differences, mark each 0 element (not a group starter) with -1.  Mark other elements (group starters) with their index position.
 	thrust::counting_iterator<int>  indexes(0);
 	
 	thrust::transform(device_numbers.begin(), device_numbers.end(), indexes, device_numbers.begin(), IndexFinder());
@@ -90,6 +94,7 @@ thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 	cout << endl;
 	#endif
 
+	//Step 5: Remove all entries with -1 in the array (non group starters)
 	//Reference: http://stackoverflow.com/questions/12269773/type-of-return-value-of-thrustremove-if
 	typedef thrust::device_vector<int>::iterator Dvi;
 	typedef thrust::tuple<Dvi, Dvi> DviTuple;
@@ -111,21 +116,24 @@ thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 	cout << endl;
 	#endif
 
+	//Step 6: Append the size of the current vector to itself.  This basically creates an extra index at the end so that we can do subtraction between elements again.
 	thrust::device_vector<int> modifiedIndexes2(device_numbers.begin(), end);
 
 	modifiedIndexes2.push_back(device_numbers.size());
+
+	device_numbers.insert(end, device_numbers.size());
 	
 	#ifdef IS_LOGGING
 	cout << "Printing special indexes after size insertion" << endl;
-	for (int i = 0; i < modifiedIndexes2.size(); i++)
+	for (int i = 0; i < device_numbers.size(); i++)
 	{
-		cout << modifiedIndexes2[i] << " ";
+		cout << device_numbers[i] << " ";
 	}
 	cout << endl;
 	#endif
 	
 
-	//thrust::device_vector<int> counts(modifiedIndexes2.size());
+	//Step 7: Find the differences between the adjacent elements.  We are finding the differences between indexes that are "group starters", which gives us the total number of elements in each group (bin category).
 	thrust::adjacent_difference(modifiedIndexes2.begin(), modifiedIndexes2.end(), modifiedIndexes2.begin());
 
 	#ifdef IS_LOGGING
@@ -137,6 +145,7 @@ thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 	cout << endl;
 	#endif
 
+	//Copy the data back to the host
 	thrust::host_vector<int> finalCounts(modifiedIndexes2.begin() + 1, modifiedIndexes2.end());
 	
 	#ifdef IS_LOGGING
@@ -150,6 +159,7 @@ thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 	cout << endl;
 	#endif
 
+	//Timing code end
 	QueryPerformanceCounter(&freqLi);
 	double timePassed = double(freqLi.QuadPart-startTime) / pcFreq;
 
@@ -162,6 +172,8 @@ thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
 thrust::host_vector<int> doHistogramGPUB(std::vector<int> numbers)
 {
 	//Reference: http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
+	
+	//Timing code start
 	LARGE_INTEGER freqLi;
 	QueryPerformanceFrequency(&freqLi);
 
@@ -169,46 +181,24 @@ thrust::host_vector<int> doHistogramGPUB(std::vector<int> numbers)
 	QueryPerformanceCounter(&freqLi);
 	__int64 startTime = freqLi.QuadPart;
 
+	#ifdef IS_LOGGING
+	cout << "Running histogram GPU method #2..." << endl;
+	cout << endl;
+	#endif
 
+	//Set up device vector
 	thrust::device_vector<int> device_numbers(numbers.begin(), numbers.end());
-	thrust::device_vector<int> device_output(numbers.size());
-
+	
 	#ifdef IS_LOGGING
 	cout << "Running transform:" << endl;
 	#endif
 
-
+	//Step 1: Find the bins for each of the elements
     thrust::transform(device_numbers.begin(), device_numbers.end(), device_numbers.begin(), device_numbers.begin(), BinFinder());
 
 	#ifdef IS_LOGGING
 	cout << endl;
 	cout << "Printing bins for input elements" << endl;
-	for (int i = 0; i < device_output.size(); i++)
-	{
-		cout << device_output[i] << " ";
-	}
-	cout << endl;
-	#endif
-
-	thrust::sort(device_numbers.begin(), device_numbers.end());
-
-	#ifdef IS_LOGGING
-	cout << "Printing sorted bins for input elements" << endl;
-	for (int i = 0; i < device_output.size(); i++)
-	{
-		cout << device_output[i] << " ";
-	}
-	cout << endl;
-	#endif
-
-	
-	thrust::constant_iterator<int> cit(1);
-	thrust::device_vector<int> newKeys(4);
-	thrust::device_vector<int> newValues(4);
-	thrust::reduce_by_key(device_numbers.begin(), device_numbers.end(), cit, newKeys.begin(), device_numbers.begin());
-
-	#ifdef IS_LOGGING
-	cout << "Printing (semi?) final bins" << endl;
 	for (int i = 0; i < device_numbers.size(); i++)
 	{
 		cout << device_numbers[i] << " ";
@@ -216,19 +206,53 @@ thrust::host_vector<int> doHistogramGPUB(std::vector<int> numbers)
 	cout << endl;
 	#endif
 
+	//Step 2: Sort those bin ids
+	thrust::sort(device_numbers.begin(), device_numbers.end());
+
+	#ifdef IS_LOGGING
+	cout << "Printing sorted bins for input elements" << endl;
+	for (int i = 0; i < device_numbers.size(); i++)
+	{
+		cout << device_numbers[i] << " ";
+	}
+	cout << endl;
+	#endif
+
+	//Step 3: Use the reduce by key function to get a count of each bin type
+	thrust::constant_iterator<int> cit(1);
+	thrust::device_vector<int> newKeys(4);
+
+	thrust::reduce_by_key(device_numbers.begin(), device_numbers.end(), cit, newKeys.begin(), device_numbers.begin());
+
+	thrust::host_vector<int> finalCounts(device_numbers.begin(), device_numbers.begin() + 4);  //device_numbers will have extra junk elements that we don't want any more
+
+	#ifdef IS_LOGGING
+	cout << "Printing final counts" << endl;
+	for (int i = 0; i < finalCounts.size(); i++)
+	{
+		cout << finalCounts[i] << " ";
+	}
+
+	cout << endl;
+	cout << endl;
+	#endif
+
+	//Timing code end
 	QueryPerformanceCounter(&freqLi);
 	double timePassed = double(freqLi.QuadPart-startTime) / pcFreq;
 
 	cout << "CPU time elapsed for GPU method #2: " << timePassed << endl;
 	
 
-	return newValues;
+	return finalCounts;
 
 }
 
 std::vector<int> doHistogramCPU(std::vector<int> numbers)
 {
 	//Reference: http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
+
+	//Timing code start
 	LARGE_INTEGER freqLi;
 	QueryPerformanceFrequency(&freqLi);
 
@@ -236,7 +260,12 @@ std::vector<int> doHistogramCPU(std::vector<int> numbers)
 	QueryPerformanceCounter(&freqLi);
 	__int64 startTime = freqLi.QuadPart;
 
+	#ifdef IS_LOGGING
+	cout << "Running histogram CPU Method..." << endl;
+	cout << endl;
+	#endif
 
+	//Calculate the number of elements belonging in each bin on the CPU using a for loop
 	std::vector<int> workingVector(numbers.begin(), numbers.end());
 	
 	std::vector<int> finalCounts(4);
@@ -262,6 +291,7 @@ std::vector<int> doHistogramCPU(std::vector<int> numbers)
 		}
 	}
 
+	//Timing code end
 	QueryPerformanceCounter(&freqLi);
 	double timePassed = double(freqLi.QuadPart-startTime) / pcFreq;
 

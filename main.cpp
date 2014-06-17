@@ -11,8 +11,8 @@ using namespace std;
 int main(int argc, char *argv[])
 {
 	srand(time(0));
-	//const int HISTO_SIZE = 10000;
-	const int HISTO_SIZE = 90000000;
+	const int HISTO_SIZE = 20;
+	//const int HISTO_SIZE = 90000000;
 	const int MAX = 20;
 
 	vector<int> numbers(HISTO_SIZE);
