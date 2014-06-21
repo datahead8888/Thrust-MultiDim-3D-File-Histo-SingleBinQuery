@@ -13,175 +13,135 @@
 #include <thrust/sort.h>
 #include <thrust/adjacent_difference.h>
 #include <thrust/iterator/constant_iterator.h>
+#include <opencv2/opencv.hpp>
 
 #include <Windows.h>
 
 using namespace std;
+using namespace cv;
 
-
-thrust::host_vector<int> doHistogramGPU(std::vector<int> numbers)
+thrust::host_vector<int> doHistogramGPU()
 {
+	Mat image = imread("colors.jpg");
+
+	if (image.empty())
+	{
+		cerr << "Error in loading image" << endl;
+		return thrust::host_vector<int> ();
+	}
+
+	cout << "Image dimensions: " << image.cols << " X " << image.rows << endl;
+
+	
+	//Based on http://stackoverflow.com/questions/16473621/convert-opencv-matrix-into-vector
+	//std::vector<thrust::tuple<int, int, int>> imageMatrix;
+	//std::vector<Vec3i> imageMatrix;
+	thrust::host_vector<int> h_blue_vector(image.rows * image.cols);
+	thrust::host_vector<int> h_green_vector(image.rows * image.cols);
+	thrust::host_vector<int> h_red_vector(image.rows * image.cols);
+
+	//Phase 1
+	//Separate the bgr data into separate arrays for each of the colors to allow coalesced memory access by thrust
+	//Based on: http://stackoverflow.com/questions/7899108/opencv-get-pixel-information-from-mat-image
+	for (int y = 0; y < image.rows; y++)
+	{
+		
+		for (int x = 0; x < image.cols; x++)
+		{
+			//Vec3i pixelEntry = image.at<Vec3i>(y,x);
+			Vec3b pixelEntry = image.at<Vec3b>(y,x);
+			//thrust::tuple<int, int, int> tuple = thrust::tuple(pixelEntry[0], pixelEntry[1], pixelEntry[2]);
+			//auto tuple = thrust::make_tuple(pixelEntry[0], pixelEntry[1], pixelEntry[2]);
+			h_blue_vector[y * image.cols + x] = static_cast<int>(pixelEntry[0]);
+
+			//cout << (int)pixelEntry[0] << endl;
+			//cout << h_blue_vector[y * image.cols + x] << endl;
+
+			h_green_vector[y * image.cols + x] = static_cast<int>(pixelEntry[1]);
+			h_red_vector[y * image.cols + x] = static_cast<int>(pixelEntry[2]);
+
+
+		}
+
+	}
+
+
+	/////////////
+	//special testing code
+	//h_blue_vector.clear();
+	//h_green_vector.clear();
+	//h_red_vector.clear();
+	//////////
+	
+	
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			for (int k = 0; k < 4; k++)
+			{
+				h_blue_vector.push_back(i * 64 + 1);
+				h_green_vector.push_back(j * 64 + 1);
+				h_red_vector.push_back(k * 64 + 1);
+			}
+		}
+	}
+	
+
+	/////special testing code
+	//h_blue_vector.push_back(1);		h_blue_vector.push_back(1);		h_blue_vector.push_back(240);	h_blue_vector.push_back(240);	h_blue_vector.push_back(1);		h_blue_vector.push_back(1);		h_blue_vector.push_back(130);		h_blue_vector.push_back(1);
+	//h_green_vector.push_back(100);	h_green_vector.push_back(131);	h_green_vector.push_back(67);	h_green_vector.push_back(67);	h_green_vector.push_back(131);	h_green_vector.push_back(100);	h_green_vector.push_back(244);		h_green_vector.push_back(100);
+	//h_red_vector.push_back(66);		h_red_vector.push_back(254);	h_red_vector.push_back(1);		h_red_vector.push_back(1);		h_red_vector.push_back(66);		h_red_vector.push_back(66);		h_red_vector.push_back(50);			h_red_vector.push_back(66);
+
+	#ifdef IS_LOGGING
+
+	cout << "Printing color vectors" << endl;
+
+	cout << "Blue:" << endl;
+	
+	for (int i = 0; i < h_blue_vector.size(); i++)
+	{
+		cout << h_blue_vector[i] << " ";
+	}
+	cout << endl;
+
+	cout << "Green:" << endl;
+
+	for (int i = 0; i < h_green_vector.size(); i++)
+	{
+		cout << h_green_vector[i] << " ";
+	}
+	cout << endl;
+
+	cout << "Red:" << endl;
+
+	for (int i = 0; i < h_red_vector.size(); i++)
+	{
+		cout << h_red_vector[i] << " ";
+	}
+	cout << endl;
+
+
+
+	#endif
+
+	/////////////
+
+	thrust::device_vector<int> d_blue_vector(h_blue_vector.begin(), h_blue_vector.end());
+	thrust::device_vector<int> d_green_vector(h_green_vector.begin(), h_green_vector.end());
+	thrust::device_vector<int> d_red_vector(h_red_vector.begin(), h_red_vector.end());
+
+	//auto zipFirst = thrust::make_zip_iterator(thrust::make_tuple(d_red_vector.begin(), d_green_vector.begin(), d_blue_vector.begin()));
+	//auto zipLast = thrust::make_zip_iterator(thrust::make_tuple(d_red_vector.end(), d_green_vector.end(), d_blue_vector.end()));
+	auto zipFirst = thrust::make_zip_iterator(thrust::make_tuple(d_blue_vector.begin(), d_green_vector.begin(), d_red_vector.begin()));
+	auto zipLast = thrust::make_zip_iterator(thrust::make_tuple(d_blue_vector.end(), d_green_vector.end(), d_red_vector.end()));
+	
+
+
+	//Phase 2
+	
 	CudaTimer cudaTimer;
-
-	//Reference: http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
 	
-	//Timing code start
-	LARGE_INTEGER freqLi;
-	QueryPerformanceFrequency(&freqLi);
-
-	double pcFreq = double(freqLi.QuadPart)/1000.0;
-	QueryPerformanceCounter(&freqLi);
-	__int64 startTime = freqLi.QuadPart;
-
-	#ifdef IS_LOGGING
-	cout << "Running histogram GPU method #1..." << endl;
-	cout << endl;
-	#endif
-	
-	cudaTimer.startTimer();
-	//Set up device vector
-	thrust::device_vector<int> device_numbers(numbers.begin(), numbers.end());
-
-	//Step 1: Locate the bins for each of the elements
-	#ifdef IS_LOGGING
-	cout << "Running bin locater transform:" << endl;
-	#endif
-	
-    thrust::transform(device_numbers.begin(), device_numbers.end(), device_numbers.begin(), device_numbers.begin(), BinFinder());
-	
-	#ifdef IS_LOGGING
-	cout << endl;
-	cout << "Printing bins for input elements" << endl;
-	for (int i = 0; i < device_numbers.size(); i++)
-	{
-		cout << device_numbers[i] << " ";
-	}
-	cout << endl;
-	#endif
-
-	//Step 2: Sort those bins
-	thrust::sort(device_numbers.begin(), device_numbers.end());
-
-	#ifdef IS_LOGGING
-	cout << "Printing sorted bins for input elements" << endl;
-	for (int i = 0; i < device_numbers.size(); i++)
-	{
-		cout << device_numbers[i] << " ";
-	}
-	cout << endl;
-	#endif
-
-	//Step 3: Find the difference between each pair of consecutive sorted bin elements.  This helps us id which elements are at the start of some sort of group (they will have values other than 0).
-	thrust::adjacent_difference(device_numbers.begin(), device_numbers.end(), device_numbers.begin());
-
-	#ifdef IS_LOGGING
-	cout << "Printing adjacent differences" << endl;
-	for (int i = 0; i < device_numbers.size(); i++)
-	{
-		cout << device_numbers[i] << " ";
-	}
-	cout << endl;
-	#endif
-
-
-	//Step 4: In those differences, mark each 0 element (not a group starter) with -1.  Mark other elements (group starters) with their index position.
-	thrust::counting_iterator<int>  indexes(0);
-	
-	thrust::transform(device_numbers.begin(), device_numbers.end(), indexes, device_numbers.begin(), IndexFinder());
-
-	#ifdef IS_LOGGING
-	cout << "Printing special indexes" << endl;
-	for (int i = 0; i < device_numbers.size(); i++)
-	{
-		cout << device_numbers[i] << " ";
-	}
-	cout << endl;
-	#endif
-
-	//Step 5: Remove all entries with -1 in the array (non group starters)
-	//Reference: http://stackoverflow.com/questions/12269773/type-of-return-value-of-thrustremove-if
-	typedef thrust::device_vector<int>::iterator Dvi;
-	typedef thrust::tuple<Dvi, Dvi> DviTuple;
-	typedef thrust::zip_iterator<DviTuple> ZipDviTuple;
-
-
-	ZipDviTuple endZipped = thrust::remove(device_numbers.begin(), device_numbers.end(), -1);
-	DviTuple endTuple = endZipped.get_iterator_tuple();
-	Dvi end = thrust::get<0>(endTuple);
-
-	
-	#ifdef IS_LOGGING
-	cout << "Printing special indexes after removals" << endl;
-	for (Dvi it = device_numbers.begin(); it != end; it++)
-	{
-		int value = *it;
-		cout << value << " ";
-	}
-	cout << endl;
-	#endif
-
-	//Step 6: Append the size of the current vector to itself.  This basically creates an extra index at the end so that we can do subtraction between elements again.
-	thrust::device_vector<int> modifiedIndexes2(device_numbers.begin(), end);
-
-	modifiedIndexes2.push_back(device_numbers.size());
-
-	device_numbers.insert(end, device_numbers.size());
-	
-	#ifdef IS_LOGGING
-	cout << "Printing special indexes after size insertion" << endl;
-	for (int i = 0; i < device_numbers.size(); i++)
-	{
-		cout << device_numbers[i] << " ";
-	}
-	cout << endl;
-	#endif
-	
-
-	//Step 7: Find the differences between the adjacent elements.  We are finding the differences between indexes that are "group starters", which gives us the total number of elements in each group (bin category).
-	thrust::adjacent_difference(modifiedIndexes2.begin(), modifiedIndexes2.end(), modifiedIndexes2.begin());
-
-	#ifdef IS_LOGGING
-	cout << "Printing (semi) final counts:" << endl;
-	for (int i = 0; i < modifiedIndexes2.size(); i++)
-	{
-		cout << modifiedIndexes2[i] << " ";
-	}
-	cout << endl;
-	#endif
-
-	//Copy the data back to the host
-	thrust::host_vector<int> finalCounts(modifiedIndexes2.begin() + 1, modifiedIndexes2.end());
-	
-	#ifdef IS_LOGGING
-	cout << "Printing (semi) final counts:" << endl;
-	for (int i = 0; i < finalCounts.size(); i++)
-	{
-		cout << finalCounts[i] << " ";
-	}
-	cout << endl;
-
-	cout << endl;
-	#endif
-
-	cudaTimer.stopTimer();
-
-	cout << "GPU time elapsed for GPU method #1: " << cudaTimer.getTimeElapsed() << endl;
-
-	//Timing code end
-	QueryPerformanceCounter(&freqLi);
-	double timePassed = double(freqLi.QuadPart-startTime) / pcFreq;
-
-	cout << "CPU time elapsed for GPU method #1: " << timePassed << endl;
-
-	return finalCounts;
-	
-}
-
-thrust::host_vector<int> doHistogramGPUB(std::vector<int> numbers)
-{
-	CudaTimer cudaTimer;
-
-
 	//Reference: http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
 	
 	//Timing code start
@@ -199,45 +159,118 @@ thrust::host_vector<int> doHistogramGPUB(std::vector<int> numbers)
 
 	cudaTimer.startTimer();
 
+	
 	//Set up device vector
-	thrust::device_vector<int> device_numbers(numbers.begin(), numbers.end());
+	//thrust::device_vector<int> device_numbers(numbers.begin(), numbers.end());
+	////////thrust::device_vector<Vec3f> device_numbers(imageMatrix.begin(), imageMatrix.end());
+	//thrust::device_vector<Vec3f> device_numbers;
+
+	
 	
 	#ifdef IS_LOGGING
 	cout << "Running transform:" << endl;
 	#endif
 
-	//Step 1: Find the bins for each of the elements
-    thrust::transform(device_numbers.begin(), device_numbers.end(), device_numbers.begin(), device_numbers.begin(), BinFinder());
+	
+	//Phase 2: Find the bins for each of the elements
+
+    thrust::transform(zipFirst, zipLast, zipFirst, zipFirst, BinFinder());
 
 	#ifdef IS_LOGGING
-	cout << endl;
-	cout << "Printing bins for input elements" << endl;
-	for (int i = 0; i < device_numbers.size(); i++)
+
+	cout << "Printing identified color bins" << endl;
+
+	cout << "Blue:" << endl;
+	
+	for (int i = 0; i < d_blue_vector.size(); i++)
 	{
-		cout << device_numbers[i] << " ";
+		cout << d_blue_vector[i] << " ";
 	}
 	cout << endl;
-	#endif
 
+	cout << "Green:" << endl;
+
+	for (int i = 0; i < d_green_vector.size(); i++)
+	{
+		cout << d_green_vector[i] << " ";
+	}
+	cout << endl;
+
+	cout << "Red:" << endl;
+
+	for (int i = 0; i < d_red_vector.size(); i++)
+	{
+		cout << d_red_vector[i] << " ";
+	}
+	cout << endl;
+
+
+	#endif
+	
+
+	
+
+	
 	//Step 2: Sort those bin ids
-	thrust::sort(device_numbers.begin(), device_numbers.end());
+	thrust::sort(zipFirst, zipLast, ZipComparator());
 
 	#ifdef IS_LOGGING
-	cout << "Printing sorted bins for input elements" << endl;
-	for (int i = 0; i < device_numbers.size(); i++)
+	
+	cout << "Printing sorted color bins" << endl;
+
+	cout << "Blue:" << endl;
+	
+	for (int i = 0; i < d_blue_vector.size(); i++)
 	{
-		cout << device_numbers[i] << " ";
+		cout << d_blue_vector[i] << " ";
 	}
 	cout << endl;
+
+	cout << "Green:" << endl;
+
+	for (int i = 0; i < d_green_vector.size(); i++)
+	{
+		cout << d_green_vector[i] << " ";
+	}
+	cout << endl;
+
+	cout << "Red:" << endl;
+
+	for (int i = 0; i < d_red_vector.size(); i++)
+	{
+		cout << d_red_vector[i] << " ";
+	}
+	cout << endl;
+
+
 	#endif
+
+
+	
 
 	//Step 3: Use the reduce by key function to get a count of each bin type
 	thrust::constant_iterator<int> cit(1);
-	thrust::device_vector<int> newKeys(4);
+	thrust::device_vector<int> counts(64);  //4 ^ 3
 
-	thrust::reduce_by_key(device_numbers.begin(), device_numbers.end(), cit, newKeys.begin(), device_numbers.begin());
+	thrust::reduce_by_key(zipFirst, zipLast, cit, zipFirst, counts.begin());
 
-	thrust::host_vector<int> finalCounts(device_numbers.begin(), device_numbers.begin() + 4);  //device_numbers will have extra junk elements that we don't want any more
+	#ifdef IS_LOGGING
+	cout << "Printing counts (each one high)" << endl;
+	for (int i = 0; i < counts.size(); i++)
+	{
+		cout << counts[i] << " ";
+	}
+
+	cout << endl;
+	cout << endl;
+	#endif
+	
+
+
+	thrust::constant_iterator<int> one(1);
+	thrust::transform(counts.begin(), counts.end(), one, counts.begin(), thrust::minus<int>());
+
+	thrust::host_vector<int> finalCounts(counts.begin(), counts.begin() + 64);  //device_numbers will have extra junk elements that we don't want any more
 
 	#ifdef IS_LOGGING
 	cout << "Printing final counts" << endl;
@@ -249,6 +282,7 @@ thrust::host_vector<int> doHistogramGPUB(std::vector<int> numbers)
 	cout << endl;
 	cout << endl;
 	#endif
+	
 
 	cudaTimer.stopTimer();
 
@@ -262,11 +296,53 @@ thrust::host_vector<int> doHistogramGPUB(std::vector<int> numbers)
 	
 
 	return finalCounts;
+	//return h_blue_vector;
 
 }
 
-std::vector<int> doHistogramCPU(std::vector<int> numbers)
+std::vector<int> doHistogramCPU()
 {
+	Mat image = imread("colors.jpg");
+
+	if (image.empty())
+	{
+		cerr << "Error in loading image" << endl;
+		return std::vector<int> ();
+	}
+
+	
+	//Based on http://stackoverflow.com/questions/16473621/convert-opencv-matrix-into-vector
+	//std::vector<thrust::tuple<int, int, int>> imageMatrix;
+	//std::vector<Vec3i> imageMatrix;
+	thrust::host_vector<int> h_blue_vector(image.rows * image.cols);
+	thrust::host_vector<int> h_green_vector(image.rows * image.cols);
+	thrust::host_vector<int> h_red_vector(image.rows * image.cols);
+
+	//Phase 1
+	//Separate the bgr data into separate arrays for each of the colors to allow coalesced memory access by thrust
+	//Based on: http://stackoverflow.com/questions/7899108/opencv-get-pixel-information-from-mat-image
+	for (int y = 0; y < image.rows; y++)
+	{
+		
+		for (int x = 0; x < image.cols; x++)
+		{
+			//Vec3i pixelEntry = image.at<Vec3i>(y,x);
+			Vec3b pixelEntry = image.at<Vec3b>(y,x);
+			//thrust::tuple<int, int, int> tuple = thrust::tuple(pixelEntry[0], pixelEntry[1], pixelEntry[2]);
+			//auto tuple = thrust::make_tuple(pixelEntry[0], pixelEntry[1], pixelEntry[2]);
+			h_blue_vector[y * image.cols + x] = static_cast<int>(pixelEntry[0]);
+
+			//cout << (int)pixelEntry[0] << endl;
+			//cout << h_blue_vector[y * image.cols + x] << endl;
+
+			h_green_vector[y * image.cols + x] = static_cast<int>(pixelEntry[1]);
+			h_red_vector[y * image.cols + x] = static_cast<int>(pixelEntry[2]);
+
+
+		}
+
+	}
+
 	//Reference: http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
 
 	//Timing code start
@@ -283,30 +359,73 @@ std::vector<int> doHistogramCPU(std::vector<int> numbers)
 	#endif
 
 	//Calculate the number of elements belonging in each bin on the CPU using a for loop
-	std::vector<int> workingVector(numbers.begin(), numbers.end());
 	
-	std::vector<int> finalCounts(4);
-	finalCounts[0] = finalCounts[1] = finalCounts[2] = finalCounts[3] = 0;
-
-	for (int i = 0; i < workingVector.size(); i++)
+	std::vector<int> finalCounts(64);
+	for (int i = 0; i < finalCounts.size(); i++)
 	{
-		if (workingVector[i] >= 1 && workingVector[i] <= 5)
+		finalCounts[i] = 0;
+	}
+
+	for (int i = 0; i < h_blue_vector.size(); i++)
+	{
+		int blueBin = 0, greenBin = 0, redBin = 0;
+		if (h_blue_vector[i] >= 0 && h_blue_vector[i] <= 63)
 		{
-			finalCounts[0]++;
+			blueBin = 0;
 		}
-		else if (workingVector[i] >= 6 && workingVector[i] <= 10)
+		else if (h_blue_vector[i] >= 64 && h_blue_vector[i] <= 127)
 		{
-			finalCounts[1]++;
+			blueBin = 1;
 		}
-		else if (workingVector[i] >= 11 && workingVector[i] <= 15)
+		else if (h_blue_vector[i] >= 128 && h_blue_vector[i] <= 191)
 		{
-			finalCounts[2]++;
+			blueBin = 2;
 		}
 		else
 		{
-			finalCounts[3]++;
+			blueBin = 3;
 		}
+
+		
+		if (h_green_vector[i] >= 0 && h_green_vector[i] <= 63)
+		{
+			greenBin = 0;
+		}
+		else if (h_green_vector[i] >= 64 && h_green_vector[i] <= 127)
+		{
+			greenBin = 1;
+		}
+		else if (h_green_vector[i] >= 128 && h_green_vector[i] <= 191)
+		{
+			greenBin = 2;
+		}
+		else
+		{
+			greenBin = 3;
+		}
+
+
+		if (h_red_vector[i] >= 0 && h_red_vector[i] <= 63)
+		{
+			redBin = 0;
+		}
+		else if (h_red_vector[i] >= 64 && h_red_vector[i] <= 127)
+		{
+			redBin = 1;
+		}
+		else if (h_red_vector[i] >= 128 && h_red_vector[i] <= 191)
+		{
+			redBin = 2;
+		}
+		else
+		{
+			redBin = 3;
+		}
+
+		finalCounts[blueBin * 16 + greenBin * 4 + redBin]++;
 	}
+
+	
 
 	//Timing code end
 	QueryPerformanceCounter(&freqLi);
