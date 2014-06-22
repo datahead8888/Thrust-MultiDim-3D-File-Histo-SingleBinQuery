@@ -6,9 +6,10 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
+
 using namespace std;
 
-
+bool loadImage(string fileName, cv::Mat & image);
 thrust::host_vector<int> doHistogramGPU();
 std::vector<int> doHistogramCPU();
 

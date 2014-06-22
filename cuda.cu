@@ -20,18 +20,34 @@
 using namespace std;
 using namespace cv;
 
-thrust::host_vector<int> doHistogramGPU()
+bool loadImage(string fileName, Mat & image)
 {
-	Mat image = imread("colors.jpg");
+	image = imread(fileName);
 
 	if (image.empty())
 	{
 		cerr << "Error in loading image" << endl;
-		return thrust::host_vector<int> ();
+		return false;
 	}
 
 	cout << "Image dimensions: " << image.cols << " X " << image.rows << endl;
 
+	return true;
+
+	
+}
+
+thrust::host_vector<int> doHistogramGPU()
+{
+	Mat image;
+
+	if (!loadImage("colors.jpg", image))
+	{
+		cerr << "Error in loading image" << endl;
+		return thrust::host_vector<int> ();
+
+	}
+	
 	
 	//Based on http://stackoverflow.com/questions/16473621/convert-opencv-matrix-into-vector
 	//std::vector<thrust::tuple<int, int, int>> imageMatrix;
@@ -302,9 +318,9 @@ thrust::host_vector<int> doHistogramGPU()
 
 std::vector<int> doHistogramCPU()
 {
-	Mat image = imread("colors.jpg");
+	Mat image;
 
-	if (image.empty())
+	if (!loadImage("colors.jpg", image))
 	{
 		cerr << "Error in loading image" << endl;
 		return std::vector<int> ();
