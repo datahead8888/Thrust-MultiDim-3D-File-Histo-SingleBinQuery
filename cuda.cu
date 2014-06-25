@@ -2,6 +2,7 @@
 #include "cudaTimer.h"
 
 #include <iostream>
+#include <iomanip>
 
 #include <thrust/device_vector.h>
 #include <thrust/transform.h>
@@ -37,124 +38,104 @@ bool loadImage(string fileName, Mat & image)
 	
 }
 
-thrust::host_vector<int> doHistogramGPU()
+bool generateRandomData(int rows, int cols, int max, thrust::host_vector<int> & data)
 {
-	Mat image;
-
-	if (!loadImage("colors.jpg", image))
+	for (int i = 0; i < rows; i++)
 	{
-		cerr << "Error in loading image" << endl;
-		return thrust::host_vector<int> ();
-
-	}
-	
-	
-	//Based on http://stackoverflow.com/questions/16473621/convert-opencv-matrix-into-vector
-	//std::vector<thrust::tuple<int, int, int>> imageMatrix;
-	//std::vector<Vec3i> imageMatrix;
-	thrust::host_vector<int> h_blue_vector(image.rows * image.cols);
-	thrust::host_vector<int> h_green_vector(image.rows * image.cols);
-	thrust::host_vector<int> h_red_vector(image.rows * image.cols);
-
-	//Phase 1
-	//Separate the bgr data into separate arrays for each of the colors to allow coalesced memory access by thrust
-	//Based on: http://stackoverflow.com/questions/7899108/opencv-get-pixel-information-from-mat-image
-	for (int y = 0; y < image.rows; y++)
-	{
-		
-		for (int x = 0; x < image.cols; x++)
+		for (int j = 0; j < cols; j++)
 		{
-			//Vec3i pixelEntry = image.at<Vec3i>(y,x);
-			Vec3b pixelEntry = image.at<Vec3b>(y,x);
-			//thrust::tuple<int, int, int> tuple = thrust::tuple(pixelEntry[0], pixelEntry[1], pixelEntry[2]);
-			//auto tuple = thrust::make_tuple(pixelEntry[0], pixelEntry[1], pixelEntry[2]);
-			h_blue_vector[y * image.cols + x] = static_cast<int>(pixelEntry[0]);
+			data[i * cols + j] = rand() % max + 1;
 
-			//cout << (int)pixelEntry[0] << endl;
-			//cout << h_blue_vector[y * image.cols + x] << endl;
+		}
+	}
 
-			h_green_vector[y * image.cols + x] = static_cast<int>(pixelEntry[1]);
-			h_red_vector[y * image.cols + x] = static_cast<int>(pixelEntry[2]);
+	return true;
 
+}
+
+void printData(int rows, int printWidth, thrust::host_vector<int> & data)
+{
+	for (int i = 0; i < rows; i++)
+	{
+		cout << setw(printWidth) << data[i] << endl;
+	
+	}
+
+}
+
+void printData(int rows, int printWidth, thrust::device_vector<int> & data)
+{
+	for (int i = 0; i < rows; i++)
+	{
+		cout << setw(printWidth) << data[i] << endl;
+	
+	}
+
+}
+
+void printData(int rows, int cols, int printWidth, thrust::host_vector<int> & data)
+{
+	for (int i = 0; i < rows; i++)
+	{
+		for (int j = 0; j < cols; j++)
+		{
+			cout << setw(printWidth) << data[i * cols + j];
+
+		}
+		cout << endl;
+	}
+
+}
+
+void printData(int rows, int cols, int printWidth, thrust::device_vector<int> & data)
+{
+	for (int i = 0; i < rows; i++)
+	{
+		for (int j = 0; j < cols; j++)
+		{
+			cout << setw(printWidth) << data[i * cols + j];
+
+		}
+		cout << endl;
+	}
+
+}
+
+void printHistoData(int rows, int cols, int printWidth, thrust::host_vector<int> & multiDimKeys, thrust::host_vector<int> & counts)
+{
+	for (int i = 0; i < rows; i++)
+	{
+		for (int j = 0; j < cols; j++)
+		{
+			cout << setw(printWidth) << multiDimKeys[i * cols + j];
 
 		}
 
+		cout << setw(printWidth) << "*" << counts[i];
+
+		cout << endl;
 	}
 
+}
 
-	/////////////
-	//special testing code
-	//h_blue_vector.clear();
-	//h_green_vector.clear();
-	//h_red_vector.clear();
-	//////////
+thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
+{
 	
+	thrust::host_vector<int> h_data(COLS * ROWS);
 	
-	for (int i = 0; i < 4; i++)
-	{
-		for (int j = 0; j < 4; j++)
-		{
-			for (int k = 0; k < 4; k++)
-			{
-				h_blue_vector.push_back(i * 64 + 1);
-				h_green_vector.push_back(j * 64 + 1);
-				h_red_vector.push_back(k * 64 + 1);
-			}
-		}
-	}
+	generateRandomData(ROWS, COLS, MAX, h_data);
 	
-
-	/////special testing code
-	//h_blue_vector.push_back(1);		h_blue_vector.push_back(1);		h_blue_vector.push_back(240);	h_blue_vector.push_back(240);	h_blue_vector.push_back(1);		h_blue_vector.push_back(1);		h_blue_vector.push_back(130);		h_blue_vector.push_back(1);
-	//h_green_vector.push_back(100);	h_green_vector.push_back(131);	h_green_vector.push_back(67);	h_green_vector.push_back(67);	h_green_vector.push_back(131);	h_green_vector.push_back(100);	h_green_vector.push_back(244);		h_green_vector.push_back(100);
-	//h_red_vector.push_back(66);		h_red_vector.push_back(254);	h_red_vector.push_back(1);		h_red_vector.push_back(1);		h_red_vector.push_back(66);		h_red_vector.push_back(66);		h_red_vector.push_back(50);			h_red_vector.push_back(66);
-
-	#ifdef IS_LOGGING
-
-	cout << "Printing color vectors" << endl;
-
-	cout << "Blue:" << endl;
-	
-	for (int i = 0; i < h_blue_vector.size(); i++)
-	{
-		cout << h_blue_vector[i] << " ";
-	}
-	cout << endl;
-
-	cout << "Green:" << endl;
-
-	for (int i = 0; i < h_green_vector.size(); i++)
-	{
-		cout << h_green_vector[i] << " ";
-	}
-	cout << endl;
-
-	cout << "Red:" << endl;
-
-	for (int i = 0; i < h_red_vector.size(); i++)
-	{
-		cout << h_red_vector[i] << " ";
-	}
-	cout << endl;
-
-
-
+	#ifdef IS_LOGGING	
+	printData(ROWS, COLS, 5, h_data);
 	#endif
-
-	/////////////
-
-	thrust::device_vector<int> d_blue_vector(h_blue_vector.begin(), h_blue_vector.end());
-	thrust::device_vector<int> d_green_vector(h_green_vector.begin(), h_green_vector.end());
-	thrust::device_vector<int> d_red_vector(h_red_vector.begin(), h_red_vector.end());
+	
+	thrust::device_vector<int>d_data(h_data.begin(), h_data.end());
 
 	//auto zipFirst = thrust::make_zip_iterator(thrust::make_tuple(d_red_vector.begin(), d_green_vector.begin(), d_blue_vector.begin()));
 	//auto zipLast = thrust::make_zip_iterator(thrust::make_tuple(d_red_vector.end(), d_green_vector.end(), d_blue_vector.end()));
-	auto zipFirst = thrust::make_zip_iterator(thrust::make_tuple(d_blue_vector.begin(), d_green_vector.begin(), d_red_vector.begin()));
-	auto zipLast = thrust::make_zip_iterator(thrust::make_tuple(d_blue_vector.end(), d_green_vector.end(), d_red_vector.end()));
-	
+	auto zipFirst = thrust::make_zip_iterator(thrust::make_tuple(d_data.begin()));
+	auto zipLast = thrust::make_zip_iterator(thrust::make_tuple(d_data.end()));
 
-
-	//Phase 2
 	
 	CudaTimer cudaTimer;
 	
@@ -169,137 +150,127 @@ thrust::host_vector<int> doHistogramGPU()
 	__int64 startTime = freqLi.QuadPart;
 
 	#ifdef IS_LOGGING
-	cout << "Running histogram GPU method #2..." << endl;
+	cout << "Running multidimensional histogram GPU method..." << endl;
 	cout << endl;
 	#endif
 
 	cudaTimer.startTimer();
-
-	
-	//Set up device vector
-	//thrust::device_vector<int> device_numbers(numbers.begin(), numbers.end());
-	////////thrust::device_vector<Vec3f> device_numbers(imageMatrix.begin(), imageMatrix.end());
-	//thrust::device_vector<Vec3f> device_numbers;
-
-	
 	
 	#ifdef IS_LOGGING
 	cout << "Running transform:" << endl;
 	#endif
 
 	
-	//Phase 2: Find the bins for each of the elements
+	//Phase 1: Find the bins for each of the elements
 
     thrust::transform(zipFirst, zipLast, zipFirst, zipFirst, BinFinder());
 
 	#ifdef IS_LOGGING
-
-	cout << "Printing identified color bins" << endl;
-
-	cout << "Blue:" << endl;
-	
-	for (int i = 0; i < d_blue_vector.size(); i++)
-	{
-		cout << d_blue_vector[i] << " ";
-	}
-	cout << endl;
-
-	cout << "Green:" << endl;
-
-	for (int i = 0; i < d_green_vector.size(); i++)
-	{
-		cout << d_green_vector[i] << " ";
-	}
-	cout << endl;
-
-	cout << "Red:" << endl;
-
-	for (int i = 0; i < d_red_vector.size(); i++)
-	{
-		cout << d_red_vector[i] << " ";
-	}
-	cout << endl;
-
-
+	cout << "Printing bin assignment" << endl;
+	printData(ROWS, COLS, 5, d_data);
 	#endif
 	
 
+	//Phase 2: Convert this effectively multi-dimensional vector into a one dimensional vector
 	
+	//TO DO: Parallelize this
 
-	
-	//Step 2: Sort those bin ids
-	thrust::sort(zipFirst, zipLast, ZipComparator());
 
-	#ifdef IS_LOGGING
-	
-	cout << "Printing sorted color bins" << endl;
+	h_data = d_data; //Copy from device_vector back to host_vector, since this code is currently executed on the CPU
 
-	cout << "Blue:" << endl;
-	
-	for (int i = 0; i < d_blue_vector.size(); i++)
+	thrust::host_vector<int> h_single_data(ROWS);
+
+	for (int i = 0; i < ROWS; i++)
 	{
-		cout << d_blue_vector[i] << " ";
+		h_single_data[i] = 0;
+		int factor = 1;
+		for (int j = COLS - 1; j >= 0; j--)
+		{
+			h_single_data[i] += (h_data[i * COLS + j] - 1) * factor;
+
+			factor *= 4;
+
+		}
 	}
-	cout << endl;
 
-	cout << "Green:" << endl;
-
-	for (int i = 0; i < d_green_vector.size(); i++)
-	{
-		cout << d_green_vector[i] << " ";
-	}
-	cout << endl;
-
-	cout << "Red:" << endl;
-
-	for (int i = 0; i < d_red_vector.size(); i++)
-	{
-		cout << d_red_vector[i] << " ";
-	}
-	cout << endl;
-
-
+	#ifdef IS_LOGGING	
+	cout << "Printing 1-D representation of data" << endl;
+	printData(ROWS, 5, h_single_data);
 	#endif
 
 
-	
+	thrust::device_vector<int> d_single_data(h_single_data.begin(), h_single_data.end());
 
-	//Step 3: Use the reduce by key function to get a count of each bin type
+	//auto singleZipFirst = thrust::make_zip_iterator(thrust::make_tuple(d_single_data.begin()));
+	//auto singleZipLast = thrust::make_zip_iterator(thrust::make_tuple(d_single_data.end()));
+
+	
+	////Step 2: Sort those bin ids
+	thrust::sort(d_single_data.begin(), d_single_data.end());
+
+	#ifdef IS_LOGGING	
+	cout << "Printing SORTED 1-D representation of data" << endl;
+	printData(ROWS, 5, d_single_data);
+	#endif
+
+	////Step 3: Use the reduce by key function to get a count of each bin type
 	thrust::constant_iterator<int> cit(1);
-	thrust::device_vector<int> counts(64);  //4 ^ 3
+	thrust::device_vector<int> d_counts(h_single_data.size());  //4 ^ 3
 
-	thrust::reduce_by_key(zipFirst, zipLast, cit, zipFirst, counts.begin());
+	typedef thrust::device_vector<int>::iterator DVI;
+
+	thrust::pair<DVI, DVI> endPosition = thrust::reduce_by_key(d_single_data.begin(), d_single_data.end(), cit, d_single_data.begin(), d_counts.begin());
 
 	#ifdef IS_LOGGING
-	cout << "Printing counts (each one high)" << endl;
-	for (int i = 0; i < counts.size(); i++)
+	
+	cout << "Results after reduce key: " << endl;
+
+	cout << "Keys (the 1-d representation of data): " << endl;
+
+	for (DVI it = d_single_data.begin(); it != endPosition.first; it++)
 	{
-		cout << counts[i] << " ";
+		cout << setw(4) << *it << " ";
+	}
+		
+	cout << endl << "Counts:" << endl;
+
+	for (DVI it = d_counts.begin(); it != endPosition.second; it++)
+	{
+		cout << setw(4) << *it << " ";
 	}
 
 	cout << endl;
 	cout << endl;
 	#endif
 	
+	thrust::host_vector<int> final_data (d_single_data.size() * COLS);
 
-
-	thrust::constant_iterator<int> one(1);
-	thrust::transform(counts.begin(), counts.end(), one, counts.begin(), thrust::minus<int>());
-
-	thrust::host_vector<int> finalCounts(counts.begin(), counts.begin() + 64);  //device_numbers will have extra junk elements that we don't want any more
-
-	#ifdef IS_LOGGING
-	cout << "Printing final counts" << endl;
-	for (int i = 0; i < finalCounts.size(); i++)
+	//Multidimensional representation reconstruction
+	int i = 0;
+	for (DVI it = d_single_data.begin(); it != endPosition.first; it++, i++)
 	{
-		cout << finalCounts[i] << " ";
+		int value = *it;
+
+		for (int j = COLS - 1; j >= 0; j--)
+		{
+			int moddedValue = value % 4 + 1;
+			final_data[i * COLS + j] = moddedValue;
+			value /= 4;
+
+		}
 	}
 
-	cout << endl;
-	cout << endl;
+	#ifdef IS_LOGGING
+	printHistoData(i, COLS, 5, final_data, thrust::host_vector<int>(d_counts.begin(), d_counts.end()));
 	#endif
+
+	
 	
 
+	
+
+	
+	
 	cudaTimer.stopTimer();
 
 	cout << "GPU time elapsed for GPU method #2: " << cudaTimer.getTimeElapsed() << endl;
@@ -311,56 +282,24 @@ thrust::host_vector<int> doHistogramGPU()
 	cout << "CPU time elapsed for GPU method #2: " << timePassed << endl;
 	
 
-	return finalCounts;
-	//return h_blue_vector;
+	return final_data;
+
+	
 
 }
 
-std::vector<int> doHistogramCPU()
+std::vector<int> doHistogramCPU(int ROWS, int COLS, int MAX)
 {
-	Mat image;
-
-	if (!loadImage("colors.jpg", image))
-	{
-		cerr << "Error in loading image" << endl;
-		return std::vector<int> ();
-	}
-
+	thrust::host_vector<int> h_data(COLS * ROWS);
 	
-	//Based on http://stackoverflow.com/questions/16473621/convert-opencv-matrix-into-vector
-	//std::vector<thrust::tuple<int, int, int>> imageMatrix;
-	//std::vector<Vec3i> imageMatrix;
-	thrust::host_vector<int> h_blue_vector(image.rows * image.cols);
-	thrust::host_vector<int> h_green_vector(image.rows * image.cols);
-	thrust::host_vector<int> h_red_vector(image.rows * image.cols);
-
-	//Phase 1
-	//Separate the bgr data into separate arrays for each of the colors to allow coalesced memory access by thrust
-	//Based on: http://stackoverflow.com/questions/7899108/opencv-get-pixel-information-from-mat-image
-	for (int y = 0; y < image.rows; y++)
-	{
-		
-		for (int x = 0; x < image.cols; x++)
-		{
-			//Vec3i pixelEntry = image.at<Vec3i>(y,x);
-			Vec3b pixelEntry = image.at<Vec3b>(y,x);
-			//thrust::tuple<int, int, int> tuple = thrust::tuple(pixelEntry[0], pixelEntry[1], pixelEntry[2]);
-			//auto tuple = thrust::make_tuple(pixelEntry[0], pixelEntry[1], pixelEntry[2]);
-			h_blue_vector[y * image.cols + x] = static_cast<int>(pixelEntry[0]);
-
-			//cout << (int)pixelEntry[0] << endl;
-			//cout << h_blue_vector[y * image.cols + x] << endl;
-
-			h_green_vector[y * image.cols + x] = static_cast<int>(pixelEntry[1]);
-			h_red_vector[y * image.cols + x] = static_cast<int>(pixelEntry[2]);
-
-
-		}
-
-	}
-
+	generateRandomData(ROWS, COLS, MAX, h_data);
+	
+	#ifdef IS_LOGGING
+	cout << "Random data:" << endl;
+	printData(ROWS, COLS, 5, h_data);
+	#endif
+	
 	//Reference: http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
-
 	//Timing code start
 	LARGE_INTEGER freqLi;
 	QueryPerformanceFrequency(&freqLi);
@@ -376,76 +315,70 @@ std::vector<int> doHistogramCPU()
 
 	//Calculate the number of elements belonging in each bin on the CPU using a for loop
 	
-	std::vector<int> finalCounts(64);
+	int numElements = 1;
+	for (int i = 0; i < COLS; i++)
+	{
+		numElements *= 4;
+	}
+
+
+	std::vector<int> finalCounts(numElements);
+
 	for (int i = 0; i < finalCounts.size(); i++)
 	{
 		finalCounts[i] = 0;
 	}
 
-	for (int i = 0; i < h_blue_vector.size(); i++)
+
+	for (int i = 0; i < ROWS; i++)
 	{
-		int blueBin = 0, greenBin = 0, redBin = 0;
-		if (h_blue_vector[i] >= 0 && h_blue_vector[i] <= 63)
+		int factor = 1;
+		int sum = 0;
+		for (int j = COLS - 1; j >= 0; j--)
 		{
-			blueBin = 0;
-		}
-		else if (h_blue_vector[i] >= 64 && h_blue_vector[i] <= 127)
-		{
-			blueBin = 1;
-		}
-		else if (h_blue_vector[i] >= 128 && h_blue_vector[i] <= 191)
-		{
-			blueBin = 2;
-		}
-		else
-		{
-			blueBin = 3;
+			//sum += (h_data[i * COLS + j] - 1) * factor;
+			int value = h_data[i * COLS + j];
+
+			int binValue = 0;
+
+			if (value <= 5)
+			{
+				binValue = 0;
+			}
+			else if (value >= 6 && value <= 9)
+			{
+				binValue = 1;
+			}
+			else if (value >= 10 && value <= 14)
+			{
+				binValue = 2;
+			}
+			else
+			{
+				binValue = 3;
+			}
+
+			sum += binValue * factor;
+
+			factor *= 4;
+
 		}
 
-		
-		if (h_green_vector[i] >= 0 && h_green_vector[i] <= 63)
-		{
-			greenBin = 0;
-		}
-		else if (h_green_vector[i] >= 64 && h_green_vector[i] <= 127)
-		{
-			greenBin = 1;
-		}
-		else if (h_green_vector[i] >= 128 && h_green_vector[i] <= 191)
-		{
-			greenBin = 2;
-		}
-		else
-		{
-			greenBin = 3;
-		}
-
-
-		if (h_red_vector[i] >= 0 && h_red_vector[i] <= 63)
-		{
-			redBin = 0;
-		}
-		else if (h_red_vector[i] >= 64 && h_red_vector[i] <= 127)
-		{
-			redBin = 1;
-		}
-		else if (h_red_vector[i] >= 128 && h_red_vector[i] <= 191)
-		{
-			redBin = 2;
-		}
-		else
-		{
-			redBin = 3;
-		}
-
-		finalCounts[blueBin * 16 + greenBin * 4 + redBin]++;
+		finalCounts[sum]++;
 	}
-
-	
 
 	//Timing code end
 	QueryPerformanceCounter(&freqLi);
 	double timePassed = double(freqLi.QuadPart-startTime) / pcFreq;
+
+	#ifdef IS_LOGGING
+	cout << "Generated histogram:" << endl;
+	printData(finalCounts.size(), 5, thrust::host_vector<int>(finalCounts.begin(), finalCounts.end()));
+
+	cout << endl;
+	#endif
+	
+
 
 	cout << "CPU time elapsed for CPU method: " << timePassed << endl;
 
