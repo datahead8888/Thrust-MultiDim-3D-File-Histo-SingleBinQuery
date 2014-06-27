@@ -90,12 +90,12 @@ struct MultiToSingleDim
 	
 
 		//int data = thrust::get<0>(param);
-		int index = thrust::get<1>(param);
+		int index = thrust::get<0>(param);
 		
 
 
 
-		thrust::get<0>(param) = rawVector[2];
+		thrust::get<1>(param) = index;
 		
 
 		
