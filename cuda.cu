@@ -274,7 +274,7 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, thrust::host_vector<
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////
 	//Multidimensional representation construction - GPU - WIP...
-	thrust::device_vector<int> d_final_data (numElements * COLS);
+	thrust::device_vector<int> d_final_data (d_single_data.size() * COLS);
 	devPtr = &d_final_data[0];
 
 	//auto zipStart = thrust::make_zip_iterator(thrust::make_tuple(counter, colCountIt, d_single_data.begin()));
