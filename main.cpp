@@ -16,6 +16,8 @@ int main(int argc, char *argv[])
 	
 	const int ROWS = 20;
 	const int COLS = 2;
+	//const int ROWS = 9000000;
+	//const int COLS = 10;
 	const int MAX = 20;
 
 	thrust::host_vector<int> h_data(COLS * ROWS);
@@ -39,7 +41,7 @@ int main(int argc, char *argv[])
 
 	std::vector<int> resultVector2 = doHistogramCPU(ROWS, COLS, h_data);
 
-	
+	#ifdef PRINT_RESULT
 	cout << "Histogram from GPU:" << endl;
 	for (int i = 0; i < resultVector1.size(); i++)
 	{
@@ -54,6 +56,7 @@ int main(int argc, char *argv[])
 		cout << resultVector2[i] << " ";
 	}
 	cout << endl;
+	#endif
 
 	
 	

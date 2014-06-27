@@ -18,6 +18,7 @@ std::vector<int> doHistogramCPU(int ROWS, int COLS, thrust::host_vector<int> & h
 
 
 #define IS_LOGGING 1
+#define PRINT_RESULT 1
 
 typedef thrust::tuple<int, int, int> Int3;
 typedef thrust::tuple<int, int> Int2;
