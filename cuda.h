@@ -73,15 +73,6 @@ struct MultiToSingleDim
 	{
 		this -> rawVector = rawVector;
 	}
-	
-	/*
-	MultiToSingleDim()
-	{
-		
-	}
-	*/
-
-
 
 	//This kernel assigns each element to a bin group
 	template <typename Tuple>
@@ -111,77 +102,60 @@ struct MultiToSingleDim
 	
 };
 
-/*
-struct PowerSeries
+//TO DO: Port this
+struct SingleToMultiDim
 {
-	PowerSeries(int base)
+	int * rawVector;
+
+	
+	SingleToMultiDim(int * rawVector)
 	{
-		this -> base = base;
+		this -> rawVector = rawVector;
 	}
 
-	int base;
-
-	__host__ __device__ Int operator()(const Int & param1) const
+	template <typename Tuple>
+	__device__ void operator()( Tuple param) 
 	{
-		int x = thrust::get<0>(param1);
-		
+	
 
-		int newValue = pow(base, x);
+		int singleDimIndex = thrust::get<0>(param);
+		int cols = thrust::get<1>(param);
+		int dataValue = thrust::get<2>(param);
 		
-		return thrust::make_tuple(newValue);
+		for (int j = cols - 1; j >= 0; j--)
+		{
+			//newValue += (rawVector[singleDimIndex * cols + j] - 1) * factor;
+			int moddedValue = dataValue % 4 + 1;
+			rawVector[singleDimIndex * cols + j] = moddedValue;
+			dataValue /= 4;
 
-		
+
+		}
+
+		/*
+		//Multidimensional representation reconstruction - CPU
+	int i = 0;
+	for (DVI it = d_single_data.begin(); it != endPosition.first; it++, i++)
+	{
+		int value = *it;
+
+		for (int j = COLS - 1; j >= 0; j--)
+		{
+			int moddedValue = value % 4 + 1;
+			final_data[i * COLS + j] = moddedValue;
+			value /= 4;
+
+		}
 	}
-};
-*/
-
-/*
-struct Decimator
-{
-
-	int cols;
-
-	Decimator(int cols)
-	{
-		this -> cols = cols;
-	}
-
-	__host__ __device__ int operator()(const int & param1) const
-	{
-		
-		
-
-		return param1 % cols;
-		
-		
-
-		
-	}
-};
-*/
-
-/*
-struct IndexFinder
-{
-	//This kernel looks at a bin element and assigns the counting index if it is not 0 and assigns -1 if it is 0
-	__host__ __device__ int operator()(const int & x, const int & y) const
-	{
-		//if (x != 0)
-		//{
-		//	return y;
-		//}
-		//else
-		//{
-		//	return -1;
-		//}
-		return (x != 0) * y + (x == 0) * -1;
-		
-		
+	*/
 		
 	}
 	
 };
-*/
+
+
+
+
 
 
 struct ZipComparator

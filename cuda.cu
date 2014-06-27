@@ -209,36 +209,12 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
 
 	thrust::for_each(zipStart, zipEnd, MultiToSingleDim(thrust::raw_pointer_cast(devPtr)));
 
-	//thrust::raw_pointer_cast(devPtr);
-	///////////thrust::for_each(zipStart, zipEnd, MultiToSingleDim());
-
-	
-	
-	/*
-	thrust::transform(
-		thrust::make_permutation_iterator(h_data.begin(), thrust::make_transform_iterator(counter, Decimator(4))), 
-		thrust::make_permutation_iterator(h_data.begin() + ROWS * COLS, thrust::make_transform_iterator(counter, Decimator(4))), 
-		d_single_data.begin(), 
-		PowerSeries(4));
-		*/
-	//thrust::make_transform_iterator(counter, Decimator(4));
-	//thrust::make_permutation_iterator(h_data.begin(), thrust::make_transform_iterator(counter, Decimator(4)));
-	//thrust::make_permutation_iterator(h_data.begin() + ROWS * COLS, thrust::make_transform_iterator(counter, Decimator(4)));
-
 	#ifdef IS_LOGGING	
 	cout << "Printing 1-D representation of data - from GPU - Prelim" << endl;
 	printData(ROWS, 5, d_single_data);
 	#endif
 
 	cout << endl;
-
-	
-
-	//thrust::device_vector<int> d_single_data(h_single_data.begin(), h_single_data.end());
-
-	//auto singleZipFirst = thrust::make_zip_iterator(thrust::make_tuple(d_single_data.begin()));
-	//auto singleZipLast = thrust::make_zip_iterator(thrust::make_tuple(d_single_data.end()));
-
 	
 	////Step 2: Sort those bin ids
 	thrust::sort(d_single_data.begin(), d_single_data.end());
@@ -280,7 +256,7 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
 	
 	thrust::host_vector<int> final_data (d_single_data.size() * COLS);
 
-	//Multidimensional representation reconstruction
+	//Multidimensional representation reconstruction - CPU
 	int i = 0;
 	for (DVI it = d_single_data.begin(); it != endPosition.first; it++, i++)
 	{
@@ -296,7 +272,25 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
 	}
 
 	#ifdef IS_LOGGING
+	cout << "Final multidimensional representation from CPU" << endl;
 	printHistoData(i, COLS, 5, final_data, thrust::host_vector<int>(d_counts.begin(), d_counts.end()));
+	#endif
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////
+	//Multidimensional representation construction - GPU - WIP...
+	thrust::device_vector<int> d_final_data (d_single_data.size() * COLS);
+	devPtr = &d_final_data[0];
+
+	//auto zipStart = thrust::make_zip_iterator(thrust::make_tuple(counter, colCountIt, d_single_data.begin()));
+	//auto zipEnd = thrust::make_zip_iterator(thrust::make_tuple(counter + d_single_data.size(), colCountIt + d_single_data.size(), d_single_data.end()));
+
+	
+	//Note: We can use the same zipStart and zipEnd iterators as before; we just use a different kernel and a different raw data pointer
+	thrust::for_each(zipStart, zipEnd, SingleToMultiDim(thrust::raw_pointer_cast(devPtr)));
+
+	#ifdef IS_LOGGING
+	cout << "Final multidimensional representation from GPU" << endl;
+	printHistoData(d_single_data.size(), COLS, 5, thrust::host_vector<int>(d_final_data.begin(), d_final_data.end()), thrust::host_vector<int>(d_counts.begin(), d_counts.end()));
 	#endif
 
 	
