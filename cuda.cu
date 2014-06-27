@@ -119,21 +119,11 @@ void printHistoData(int rows, int cols, int printWidth, thrust::host_vector<int>
 
 }
 
-thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
+thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, thrust::host_vector<int> & h_data)
 {
-	
-	thrust::host_vector<int> h_data(COLS * ROWS);
-	
-	generateRandomData(ROWS, COLS, MAX, h_data);
-	
-	#ifdef IS_LOGGING	
-	printData(ROWS, COLS, 5, h_data);
-	#endif
 	
 	thrust::device_vector<int>d_data(h_data.begin(), h_data.end());
 
-	//auto zipFirst = thrust::make_zip_iterator(thrust::make_tuple(d_red_vector.begin(), d_green_vector.begin(), d_blue_vector.begin()));
-	//auto zipLast = thrust::make_zip_iterator(thrust::make_tuple(d_red_vector.end(), d_green_vector.end(), d_blue_vector.end()));
 	auto zipFirst = thrust::make_zip_iterator(thrust::make_tuple(d_data.begin()));
 	auto zipLast = thrust::make_zip_iterator(thrust::make_tuple(d_data.end()));
 
@@ -171,9 +161,7 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
 
 	//Phase 2: Convert this effectively multi-dimensional vector into a one dimensional vector
 	
-	//TO DO: Parallelize this
-
-	//////////////////////////////////////////
+	/*
 	h_data = d_data; //Copy from device_vector back to host_vector, since this code is currently executed on the CPU
 
 	thrust::host_vector<int> h_single_data(ROWS);
@@ -195,6 +183,7 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
 	cout << "Printing 1-D representation of data - from CPU" << endl;
 	printData(ROWS, 5, h_single_data);
 	#endif
+	*/
 
 	/////////////////////////////////////////////////////////////////////////////////
 
@@ -226,7 +215,7 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
 
 	////Step 3: Use the reduce by key function to get a count of each bin type
 	thrust::constant_iterator<int> cit(1);
-	thrust::device_vector<int> d_counts(h_single_data.size());  //4 ^ 3
+	thrust::device_vector<int> d_counts(d_single_data.size());  //4 ^ 3
 
 	typedef thrust::device_vector<int>::iterator DVI;
 
@@ -254,6 +243,8 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
 	cout << endl;
 	#endif
 	
+
+	/*
 	thrust::host_vector<int> final_data (d_single_data.size() * COLS);
 
 	//Multidimensional representation reconstruction - CPU
@@ -275,6 +266,7 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
 	cout << "Final multidimensional representation from CPU" << endl;
 	printHistoData(i, COLS, 5, final_data, thrust::host_vector<int>(d_counts.begin(), d_counts.end()));
 	#endif
+	*/
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////
 	//Multidimensional representation construction - GPU - WIP...
@@ -304,23 +296,14 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
 	cout << "CPU time elapsed for GPU method #2: " << cpuTimer.getTimeElapsed() << endl;
 	
 
-	return final_data;
+	return thrust::host_vector<int>(d_final_data.begin(), d_final_data.end());
 
 	
 
 }
 
-std::vector<int> doHistogramCPU(int ROWS, int COLS, int MAX)
-{
-	thrust::host_vector<int> h_data(COLS * ROWS);
-	
-	generateRandomData(ROWS, COLS, MAX, h_data);
-	
-	#ifdef IS_LOGGING
-	cout << "Random data:" << endl;
-	printData(ROWS, COLS, 5, h_data);
-	#endif
-	
+std::vector<int> doHistogramCPU(int ROWS, int COLS, thrust::host_vector<int> & h_data)
+{		
 	//Reference: http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
 	//Timing code start
 	WindowsCpuTimer cpuTimer;

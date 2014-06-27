@@ -13,8 +13,8 @@ void printData(int rows, int cols, int printWidth, thrust::device_vector<int> & 
 void printData(int rows, int cols, int printWidth, thrust::host_vector<int> & data);
 bool generateRandomData(int rows, int cols, int max, thrust::host_vector<int> & data);
 bool loadImage(string fileName, cv::Mat & image);
-thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX);
-std::vector<int> doHistogramCPU(int ROWS, int COLS, int MAX);
+thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, thrust::host_vector<int> & h_data);
+std::vector<int> doHistogramCPU(int ROWS, int COLS, thrust::host_vector<int> & h_data);
 
 
 #define IS_LOGGING 1
