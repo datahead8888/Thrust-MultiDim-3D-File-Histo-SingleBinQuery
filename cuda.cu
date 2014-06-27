@@ -1,5 +1,6 @@
 #include "cuda.h"
 #include "cudaTimer.h"
+#include "windowsCpuTimer.h"
 
 #include <iostream>
 #include <iomanip>
@@ -138,16 +139,12 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
 
 	
 	CudaTimer cudaTimer;
+	WindowsCpuTimer cpuTimer;
 	
 	//Reference: http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
 	
 	//Timing code start
-	LARGE_INTEGER freqLi;
-	QueryPerformanceFrequency(&freqLi);
-
-	double pcFreq = double(freqLi.QuadPart)/1000.0;
-	QueryPerformanceCounter(&freqLi);
-	__int64 startTime = freqLi.QuadPart;
+	
 
 	#ifdef IS_LOGGING
 	cout << "Running multidimensional histogram GPU method..." << endl;
@@ -155,6 +152,7 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
 	#endif
 
 	cudaTimer.startTimer();
+	cpuTimer.startTimer();
 	
 	#ifdef IS_LOGGING
 	cout << "Running transform:" << endl;
@@ -175,7 +173,7 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
 	
 	//TO DO: Parallelize this
 
-
+	//////////////////////////////////////////
 	h_data = d_data; //Copy from device_vector back to host_vector, since this code is currently executed on the CPU
 
 	thrust::host_vector<int> h_single_data(ROWS);
@@ -194,12 +192,49 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
 	}
 
 	#ifdef IS_LOGGING	
-	cout << "Printing 1-D representation of data" << endl;
+	cout << "Printing 1-D representation of data - from CPU" << endl;
 	printData(ROWS, 5, h_single_data);
 	#endif
 
+	/////////////////////////////////////////////////////////////////////////////////
 
-	thrust::device_vector<int> d_single_data(h_single_data.begin(), h_single_data.end());
+	thrust::device_vector<int> d_single_data(ROWS);
+
+
+	thrust::counting_iterator<int> counter;
+	auto zipStart = thrust::make_zip_iterator(thrust::make_tuple(d_single_data.begin(), counter));
+	auto zipEnd = thrust::make_zip_iterator(thrust::make_tuple(d_single_data.end(), counter + d_data.size()));
+
+	thrust::device_ptr<int> devPtr = &d_data[0];
+
+	thrust::for_each(zipStart, zipEnd, MultiToSingleDim(thrust::raw_pointer_cast(devPtr)));
+
+	//thrust::raw_pointer_cast(devPtr);
+	///////////thrust::for_each(zipStart, zipEnd, MultiToSingleDim());
+
+	
+	
+	/*
+	thrust::transform(
+		thrust::make_permutation_iterator(h_data.begin(), thrust::make_transform_iterator(counter, Decimator(4))), 
+		thrust::make_permutation_iterator(h_data.begin() + ROWS * COLS, thrust::make_transform_iterator(counter, Decimator(4))), 
+		d_single_data.begin(), 
+		PowerSeries(4));
+		*/
+	//thrust::make_transform_iterator(counter, Decimator(4));
+	//thrust::make_permutation_iterator(h_data.begin(), thrust::make_transform_iterator(counter, Decimator(4)));
+	//thrust::make_permutation_iterator(h_data.begin() + ROWS * COLS, thrust::make_transform_iterator(counter, Decimator(4)));
+
+	#ifdef IS_LOGGING	
+	cout << "Printing 1-D representation of data - from GPU - Prelim" << endl;
+	printData(ROWS, 5, d_single_data);
+	#endif
+
+	cout << endl;
+
+	
+
+	//thrust::device_vector<int> d_single_data(h_single_data.begin(), h_single_data.end());
 
 	//auto singleZipFirst = thrust::make_zip_iterator(thrust::make_tuple(d_single_data.begin()));
 	//auto singleZipLast = thrust::make_zip_iterator(thrust::make_tuple(d_single_data.end()));
@@ -272,14 +307,13 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
 	
 	
 	cudaTimer.stopTimer();
+	cpuTimer.stopTimer();
 
 	cout << "GPU time elapsed for GPU method #2: " << cudaTimer.getTimeElapsed() << endl;
 	
-	//Timing code end
-	QueryPerformanceCounter(&freqLi);
-	double timePassed = double(freqLi.QuadPart-startTime) / pcFreq;
+	
 
-	cout << "CPU time elapsed for GPU method #2: " << timePassed << endl;
+	cout << "CPU time elapsed for GPU method #2: " << cpuTimer.getTimeElapsed() << endl;
 	
 
 	return final_data;
@@ -301,13 +335,10 @@ std::vector<int> doHistogramCPU(int ROWS, int COLS, int MAX)
 	
 	//Reference: http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
 	//Timing code start
-	LARGE_INTEGER freqLi;
-	QueryPerformanceFrequency(&freqLi);
-
-	double pcFreq = double(freqLi.QuadPart)/1000.0;
-	QueryPerformanceCounter(&freqLi);
-	__int64 startTime = freqLi.QuadPart;
-
+	WindowsCpuTimer cpuTimer;
+	cpuTimer.startTimer();
+	
+	
 	#ifdef IS_LOGGING
 	cout << "Running histogram CPU Method..." << endl;
 	cout << endl;
@@ -368,8 +399,7 @@ std::vector<int> doHistogramCPU(int ROWS, int COLS, int MAX)
 	}
 
 	//Timing code end
-	QueryPerformanceCounter(&freqLi);
-	double timePassed = double(freqLi.QuadPart-startTime) / pcFreq;
+	cpuTimer.stopTimer();
 
 	#ifdef IS_LOGGING
 	cout << "Generated histogram:" << endl;
@@ -380,7 +410,7 @@ std::vector<int> doHistogramCPU(int ROWS, int COLS, int MAX)
 	
 
 
-	cout << "CPU time elapsed for CPU method: " << timePassed << endl;
+	cout << "CPU time elapsed for CPU method: " << cpuTimer.getTimeElapsed() << endl;
 
 	return finalCounts;
 

@@ -20,6 +20,7 @@ std::vector<int> doHistogramCPU(int ROWS, int COLS, int MAX);
 #define IS_LOGGING 1
 
 typedef thrust::tuple<int, int, int> Int3;
+typedef thrust::tuple<int, int> Int2;
 typedef thrust::tuple<int> Int;
 
 struct BinFinder
@@ -47,14 +48,6 @@ struct BinFinder
 		//	return 4;
 		//}
 
-		//return (x >= 0 && x <= 5) * 1 +
-		//	(x >=6 && x <= 10) * 2 +
-		//	(x >= 11 && x <= 15) * 3 +
-		//	(x >= 16 && x <=20) * 4;
-		
-		//cout << x << " ";
-
-
 		int x = thrust::get<0>(param1);
 		
 
@@ -71,7 +64,99 @@ struct BinFinder
 };
 
 
+struct MultiToSingleDim
+{
+	int * rawVector;
 
+	
+	MultiToSingleDim(int * rawVector)
+	{
+		this -> rawVector = rawVector;
+	}
+	
+	/*
+	MultiToSingleDim()
+	{
+		
+	}
+	*/
+
+
+
+	//This kernel assigns each element to a bin group
+	template <typename Tuple>
+	__device__ void operator()( Tuple param) 
+	{
+	
+
+		//int data = thrust::get<0>(param);
+		int index = thrust::get<1>(param);
+		
+
+
+
+		thrust::get<0>(param) = rawVector[2];
+		
+
+		
+		
+		
+
+		
+	}
+	
+};
+
+/*
+struct PowerSeries
+{
+	PowerSeries(int base)
+	{
+		this -> base = base;
+	}
+
+	int base;
+
+	__host__ __device__ Int operator()(const Int & param1) const
+	{
+		int x = thrust::get<0>(param1);
+		
+
+		int newValue = pow(base, x);
+		
+		return thrust::make_tuple(newValue);
+
+		
+	}
+};
+*/
+
+/*
+struct Decimator
+{
+
+	int cols;
+
+	Decimator(int cols)
+	{
+		this -> cols = cols;
+	}
+
+	__host__ __device__ int operator()(const int & param1) const
+	{
+		
+		
+
+		return param1 % cols;
+		
+		
+
+		
+	}
+};
+*/
+
+/*
 struct IndexFinder
 {
 	//This kernel looks at a bin element and assigns the counting index if it is not 0 and assigns -1 if it is 0
@@ -92,6 +177,7 @@ struct IndexFinder
 	}
 	
 };
+*/
 
 
 struct ZipComparator
