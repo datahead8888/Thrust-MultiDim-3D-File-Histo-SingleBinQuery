@@ -90,18 +90,22 @@ struct MultiToSingleDim
 	
 
 		//int data = thrust::get<0>(param);
-		int index = thrust::get<0>(param);
+		int singleDimIndex = thrust::get<0>(param);
+		int cols = thrust::get<1>(param);
 		
+		int newValue = 0;
+		int factor = 1;
+		for (int j = cols - 1; j >= 0; j--)
+		{
+			newValue += (rawVector[singleDimIndex * cols + j] - 1) * factor;
+
+			factor *= 4;
 
 
+		}
 
-		thrust::get<1>(param) = index;
-		
 
-		
-		
-		
-
+		thrust::get<2>(param) = newValue;
 		
 	}
 	

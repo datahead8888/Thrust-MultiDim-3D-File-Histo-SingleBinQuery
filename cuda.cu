@@ -200,10 +200,10 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
 
 	thrust::device_vector<int> d_single_data(ROWS);
 
-
+	thrust::constant_iterator<int> colCountIt(COLS);
 	thrust::counting_iterator<int> counter(0);
-	auto zipStart = thrust::make_zip_iterator(thrust::make_tuple(counter, d_single_data.begin()));
-	auto zipEnd = thrust::make_zip_iterator(thrust::make_tuple(counter + d_single_data.size(), d_single_data.end()));
+	auto zipStart = thrust::make_zip_iterator(thrust::make_tuple(counter, colCountIt, d_single_data.begin()));
+	auto zipEnd = thrust::make_zip_iterator(thrust::make_tuple(counter + d_single_data.size(), colCountIt + d_single_data.size(), d_single_data.end()));
 
 	thrust::device_ptr<int> devPtr = &d_data[0];
 
@@ -299,12 +299,6 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX)
 	printHistoData(i, COLS, 5, final_data, thrust::host_vector<int>(d_counts.begin(), d_counts.end()));
 	#endif
 
-	
-	
-
-	
-
-	
 	
 	cudaTimer.stopTimer();
 	cpuTimer.stopTimer();
