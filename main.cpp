@@ -16,8 +16,8 @@ int main(int argc, char *argv[])
 	
 	//const int ROWS = 20;
 	//const int COLS = 2;
-	const int ROWS = 9000000;
-	const int COLS = 10;
+	const int ROWS = 900;
+	const int COLS = 14;
 	const int MAX = 20;
 
 	thrust::host_vector<int> h_data(COLS * ROWS);
