@@ -221,7 +221,11 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, thrust::host_vector<
 
 	thrust::pair<DVI, DVI> endPosition = thrust::reduce_by_key(d_single_data.begin(), d_single_data.end(), cit, d_single_data.begin(), d_counts.begin());
 
+	int numElements = endPosition.first - d_single_data.begin();
+	
 	#ifdef IS_LOGGING
+
+	cout << "Number of elements from reduce key: " << numElements << endl;
 	
 	cout << "Results after reduce key: " << endl;
 
@@ -270,7 +274,7 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, thrust::host_vector<
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////
 	//Multidimensional representation construction - GPU - WIP...
-	thrust::device_vector<int> d_final_data (d_single_data.size() * COLS);
+	thrust::device_vector<int> d_final_data (numElements * COLS);
 	devPtr = &d_final_data[0];
 
 	//auto zipStart = thrust::make_zip_iterator(thrust::make_tuple(counter, colCountIt, d_single_data.begin()));
@@ -282,21 +286,17 @@ thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, thrust::host_vector<
 
 	#ifdef IS_LOGGING
 	cout << "Final multidimensional representation from GPU" << endl;
-	printHistoData(d_single_data.size(), COLS, 5, thrust::host_vector<int>(d_final_data.begin(), d_final_data.end()), thrust::host_vector<int>(d_counts.begin(), d_counts.end()));
+	printHistoData(numElements, COLS, 5, thrust::host_vector<int>(d_final_data.begin(), d_final_data.end()), thrust::host_vector<int>(d_counts.begin(), d_counts.end()));
 	#endif
-
-	
+		
 	cudaTimer.stopTimer();
 	cpuTimer.stopTimer();
 
 	cout << "GPU time elapsed for GPU method #2: " << cudaTimer.getTimeElapsed() << endl;
 	
-	
-
 	cout << "CPU time elapsed for GPU method #2: " << cpuTimer.getTimeElapsed() << endl;
 	
-
-	return thrust::host_vector<int>(d_final_data.begin(), d_final_data.end());
+	return thrust::host_vector<int>(d_counts.begin(), endPosition.second);
 
 	
 

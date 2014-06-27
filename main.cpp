@@ -28,18 +28,18 @@ int main(int argc, char *argv[])
 	printData(ROWS, COLS, 5, h_data);
 	#endif
 
-	//thrust::host_vector<int> b_data = h_data;
+	thrust::host_vector<int> b_data = h_data;
 
 	thrust::host_vector<int> resultVector1 = doHistogramGPU(ROWS, COLS, h_data);
 
-	generateRandomData(ROWS, COLS, MAX, h_data);
+	//generateRandomData(ROWS, COLS, MAX, h_data);
 
-	#ifdef IS_LOGGING
-	cout << "Random data:" << endl;
-	printData(ROWS, COLS, 5, h_data);
-	#endif
+	//#ifdef IS_LOGGING
+	//cout << "Random data:" << endl;
+	//printData(ROWS, COLS, 5, h_data);
+	//#endif
 
-	std::vector<int> resultVector2 = doHistogramCPU(ROWS, COLS, h_data);
+	std::vector<int> resultVector2 = doHistogramCPU(ROWS, COLS, b_data);
 
 	#ifdef PRINT_RESULT
 	cout << "Histogram from GPU:" << endl;
