@@ -9,7 +9,7 @@ SET (CUDA_VERBOSE_BUILD ON CACHE BOOL "nvcc verbose" FORCE)
 #HW capability 1.3
 
 SET(LIB_TYPE STATIC)	#set the lib type
-CUDA_ADD_LIBRARY(CudaLib ${LIB_TYPE} cuda.h cuda.cu cudaTimer.h cudaTimer.cu)
+CUDA_ADD_LIBRARY(CudaLib ${LIB_TYPE} cuda.h cuda.cu cudaTimer.h cudaTimer.cu windowsCpuTimer.h windowsCpuTimer.cu)
 
 LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/build_win64/Release)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/build_win64/Release)

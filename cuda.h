@@ -13,13 +13,15 @@ void printData(int rows, int cols, int printWidth, thrust::device_vector<int> & 
 void printData(int rows, int cols, int printWidth, thrust::host_vector<int> & data);
 bool generateRandomData(int rows, int cols, int max, thrust::host_vector<int> & data);
 bool loadImage(string fileName, cv::Mat & image);
-thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, int MAX);
-std::vector<int> doHistogramCPU(int ROWS, int COLS, int MAX);
+thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, thrust::host_vector<int> & h_data);
+std::vector<int> doHistogramCPU(int ROWS, int COLS, thrust::host_vector<int> & h_data);
 
 
-#define IS_LOGGING 1
+//#define IS_LOGGING 1
+//#define PRINT_RESULT 1
 
 typedef thrust::tuple<int, int, int> Int3;
+typedef thrust::tuple<int, int> Int2;
 typedef thrust::tuple<int> Int;
 
 struct BinFinder
@@ -47,14 +49,6 @@ struct BinFinder
 		//	return 4;
 		//}
 
-		//return (x >= 0 && x <= 5) * 1 +
-		//	(x >=6 && x <= 10) * 2 +
-		//	(x >= 11 && x <= 15) * 3 +
-		//	(x >= 16 && x <=20) * 4;
-		
-		//cout << x << " ";
-
-
 		int x = thrust::get<0>(param1);
 		
 
@@ -71,27 +65,98 @@ struct BinFinder
 };
 
 
-
-struct IndexFinder
+struct MultiToSingleDim
 {
-	//This kernel looks at a bin element and assigns the counting index if it is not 0 and assigns -1 if it is 0
-	__host__ __device__ int operator()(const int & x, const int & y) const
+	int * rawVector;
+
+	
+	MultiToSingleDim(int * rawVector)
 	{
-		//if (x != 0)
-		//{
-		//	return y;
-		//}
-		//else
-		//{
-		//	return -1;
-		//}
-		return (x != 0) * y + (x == 0) * -1;
+		this -> rawVector = rawVector;
+	}
+
+	//This kernel assigns each element to a bin group
+	template <typename Tuple>
+	__device__ void operator()( Tuple param) 
+	{
+	
+
+		//int data = thrust::get<0>(param);
+		int singleDimIndex = thrust::get<0>(param);
+		int cols = thrust::get<1>(param);
 		
-		
+		int newValue = 0;
+		int factor = 1;
+		for (int j = cols - 1; j >= 0; j--)
+		{
+			newValue += (rawVector[singleDimIndex * cols + j] - 1) * factor;
+
+			factor *= 4;
+
+
+		}
+
+
+		thrust::get<2>(param) = newValue;
 		
 	}
 	
 };
+
+//TO DO: Port this
+struct SingleToMultiDim
+{
+	int * rawVector;
+
+	
+	SingleToMultiDim(int * rawVector)
+	{
+		this -> rawVector = rawVector;
+	}
+
+	template <typename Tuple>
+	__device__ void operator()( Tuple param) 
+	{
+	
+
+		int singleDimIndex = thrust::get<0>(param);
+		int cols = thrust::get<1>(param);
+		int dataValue = thrust::get<2>(param);
+		
+		for (int j = cols - 1; j >= 0; j--)
+		{
+			//newValue += (rawVector[singleDimIndex * cols + j] - 1) * factor;
+			int moddedValue = dataValue % 4 + 1;
+			rawVector[singleDimIndex * cols + j] = moddedValue;
+			dataValue /= 4;
+
+
+		}
+
+		/*
+		//Multidimensional representation reconstruction - CPU
+	int i = 0;
+	for (DVI it = d_single_data.begin(); it != endPosition.first; it++, i++)
+	{
+		int value = *it;
+
+		for (int j = COLS - 1; j >= 0; j--)
+		{
+			int moddedValue = value % 4 + 1;
+			final_data[i * COLS + j] = moddedValue;
+			value /= 4;
+
+		}
+	}
+	*/
+		
+	}
+	
+};
+
+
+
+
 
 
 struct ZipComparator
