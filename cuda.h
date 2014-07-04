@@ -4,58 +4,72 @@
 #include <thrust/device_vector.h>
 #include <vector>
 #include <iostream>
-#include <opencv2/opencv.hpp>
+//#include <opencv2/opencv.hpp>
 
 
 using namespace std;
 
 void printData(int rows, int cols, int printWidth, thrust::device_vector<int> & data);
 void printData(int rows, int cols, int printWidth, thrust::host_vector<int> & data);
+void printData(int rows, int cols, int printWidth, thrust::host_vector<float> & data);
 bool generateRandomData(int rows, int cols, int max, thrust::host_vector<int> & data);
-bool loadImage(string fileName, cv::Mat & image);
-thrust::host_vector<int> doHistogramGPU(int ROWS, int COLS, thrust::host_vector<int> & h_data);
+void loadTextFile(const string & fileName, int xSize, int ySize, int zSize, int numvars, int step, thrust::host_vector<float> & h_data );
+thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int numvars, int step, thrust::host_vector<float> & h_data);
 std::vector<int> doHistogramCPU(int ROWS, int COLS, thrust::host_vector<int> & h_data);
 
-
-//#define IS_LOGGING 1
+#define PRINT_INPUT 1
+#define IS_LOGGING 1
 //#define PRINT_RESULT 1
 
 typedef thrust::tuple<int, int, int> Int3;
 typedef thrust::tuple<int, int> Int2;
 typedef thrust::tuple<int> Int;
 
+typedef thrust::tuple<float, float, float> Float3;
+typedef thrust::tuple<float, float> Float2;
+typedef thrust::tuple<float> Float;
+
+
 struct BinFinder
 {
-	//This kernel assigns each element to a bin group
-	__host__ __device__ Int operator()(const Int & param1, const Int & param2) const
+	float * rawMinVector;
+	float * rawMaxVector;
+	int numVars;
+	int numBins;
+
+	
+	BinFinder(float * rawMinVector, float * rawMaxVector, int numVars, int numBins)
 	{
-		//return x + y;
+		this -> rawMinVector = rawMinVector;
+		this -> rawMaxVector = rawMaxVector;
+		this -> numVars = numVars;
+		this -> numBins = numBins;
+	}
+
+
+	//This kernel assigns each element to a bin group
+	__host__ __device__ Int operator()(const Float & param1, const int & param2) const
+	{
 		
 
-		//if (x >= 0 && x <=5)
-		//{
-		//	return 1;
-		//}
-		//else if (x >=6 && x <= 10)
-		//{
-		//	return 2;
-		//}
-		//else if (x >= 11 && x <= 15)
-		//{
-		//	return 3;
-		//}
-		//else
-		//{
-		//	return 4;
-		//}
+		float value = thrust::get<0>(param1);
+		int id = param2;
 
-		int x = thrust::get<0>(param1);
+		float min = rawMinVector[id % numVars];
+		float max = rawMaxVector[id % numVars];
+
 		
 
-		int bin = (x <= 5) * 1 +
-			(x >= 6 && x <= 9) * 2 +
-			(x >= 10 && x <= 14) * 3 +
-			(x >= 15) * 4;
+		float percentage = (value - min) / float(max - min);
+
+
+		int bin = percentage * numBins;
+
+		if (bin == numBins)
+		{
+			bin--;
+		}
+
 		
 		return thrust::make_tuple(bin);
 
@@ -89,7 +103,7 @@ struct MultiToSingleDim
 		int factor = 1;
 		for (int j = cols - 1; j >= 0; j--)
 		{
-			newValue += (rawVector[singleDimIndex * cols + j] - 1) * factor;
+			newValue += (rawVector[singleDimIndex * cols + j]) * factor;
 
 			factor *= 4;
 
