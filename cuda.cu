@@ -344,53 +344,53 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 
 	#ifdef IS_LOGGING	
 	cout << "Printing 1-D representation of data - from GPU - Prelim" << endl;
-	printData(xSize * ySize * zSize, 5, d_single_data);
+	printData(xSize * ySize * zSize, 10, d_single_data);
 	#endif
 
 	//cout << endl;
 	//
 	//////Step 2: Sort those bin ids
-	//thrust::sort(d_single_data.begin(), d_single_data.end());
+	thrust::sort(d_single_data.begin(), d_single_data.end());
 
-	//#ifdef IS_LOGGING	
-	//cout << "Printing SORTED 1-D representation of data" << endl;
-	//printData(ROWS, 5, d_single_data);
-	//#endif
+	#ifdef IS_LOGGING	
+	cout << "Printing SORTED 1-D representation of data" << endl;
+	printData(xSize * ySize * zSize, 10, d_single_data);
+	#endif
 
 	//////Step 3: Use the reduce by key function to get a count of each bin type
-	//thrust::constant_iterator<int> cit(1);
-	//thrust::device_vector<int> d_counts(d_single_data.size());  //4 ^ 3
+	thrust::constant_iterator<int> cit(1);
+	thrust::device_vector<int> d_counts(d_single_data.size());  //4 ^ 3
 
-	//typedef thrust::device_vector<int>::iterator DVI;
+	typedef thrust::device_vector<int>::iterator DVI;
 
-	//thrust::pair<DVI, DVI> endPosition = thrust::reduce_by_key(d_single_data.begin(), d_single_data.end(), cit, d_single_data.begin(), d_counts.begin());
+	thrust::pair<DVI, DVI> endPosition = thrust::reduce_by_key(d_single_data.begin(), d_single_data.end(), cit, d_single_data.begin(), d_counts.begin());
 
-	//int numElements = endPosition.first - d_single_data.begin();
-	//
-	//#ifdef IS_LOGGING
+	int numElements = endPosition.first - d_single_data.begin();
+	
+	#ifdef IS_LOGGING
 
-	//cout << "Number of elements from reduce key: " << numElements << endl;
-	//
-	//cout << "Results after reduce key: " << endl;
+	cout << "Number of elements from reduce key: " << numElements << endl;
+	
+	cout << "Results after reduce key: " << endl;
 
-	//cout << "Keys (the 1-d representation of data): " << endl;
+	cout << "Keys (the 1-d representation of data): " << endl;
 
-	//for (DVI it = d_single_data.begin(); it != endPosition.first; it++)
-	//{
-	//	cout << setw(4) << *it << " ";
-	//}
-	//	
-	//cout << endl << "Counts:" << endl;
+	for (DVI it = d_single_data.begin(); it != endPosition.first; it++)
+	{
+		cout << setw(4) << *it << " ";
+	}
+		
+	cout << endl << "Counts:" << endl;
 
-	//for (DVI it = d_counts.begin(); it != endPosition.second; it++)
-	//{
-	//	cout << setw(4) << *it << " ";
-	//}
-
-	//cout << endl;
-	//cout << endl;
-	//#endif
-	//
+	for (DVI it = d_counts.begin(); it != endPosition.second; it++)
+	{
+		cout << setw(4) << *it << " ";
+	}
+	
+	cout << endl;
+	cout << endl;
+	#endif
+	
 
 	///*
 	//thrust::host_vector<int> final_data (d_single_data.size() * COLS);
@@ -417,30 +417,30 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 	//*/
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////
-	////Multidimensional representation construction - GPU - WIP...
-	//thrust::device_vector<int> d_final_data (d_single_data.size() * COLS);
-	//devPtr = &d_final_data[0];
+	////Multidimensional representation construction - GPU...
+	thrust::device_vector<int> d_final_data (d_single_data.size() * numVars);
+	devPtr = &d_final_data[0];
 
-	////auto zipStart = thrust::make_zip_iterator(thrust::make_tuple(counter, colCountIt, d_single_data.begin()));
-	////auto zipEnd = thrust::make_zip_iterator(thrust::make_tuple(counter + d_single_data.size(), colCountIt + d_single_data.size(), d_single_data.end()));
+	//auto zipStart = thrust::make_zip_iterator(thrust::make_tuple(counter, colCountIt, d_single_data.begin()));
+	//auto zipEnd = thrust::make_zip_iterator(thrust::make_tuple(counter + d_single_data.size(), colCountIt + d_single_data.size(), d_single_data.end()));
 
 	//
 	////Note: We can use the same zipStart and zipEnd iterators as before; we just use a different kernel and a different raw data pointer
-	//thrust::for_each(zipStart, zipEnd, SingleToMultiDim(thrust::raw_pointer_cast(devPtr)));
+	thrust::for_each(zipStart, zipEnd, SingleToMultiDim(thrust::raw_pointer_cast(devPtr)));
 
-	//#ifdef IS_LOGGING
-	//cout << "Final multidimensional representation from GPU" << endl;
-	//printHistoData(numElements, COLS, 5, thrust::host_vector<int>(d_final_data.begin(), d_final_data.end()), thrust::host_vector<int>(d_counts.begin(), d_counts.end()));
-	//#endif
+	#ifdef IS_LOGGING
+	cout << "Final multidimensional representation from GPU" << endl;
+	printHistoData(xSize * ySize * zSize, numVars, 10, thrust::host_vector<int>(d_final_data.begin(), d_final_data.end()), thrust::host_vector<int>(d_counts.begin(), d_counts.end()));
+	#endif
 	//	
-	//cudaTimer.stopTimer();
-	//cpuTimer.stopTimer();
+	cudaTimer.stopTimer();
+	cpuTimer.stopTimer();
 
-	//cout << "GPU time elapsed for GPU method #2: " << cudaTimer.getTimeElapsed() << endl;
-	//
-	//cout << "CPU time elapsed for GPU method #2: " << cpuTimer.getTimeElapsed() << endl;
-	//
-	//return thrust::host_vector<int>(d_counts.begin(), endPosition.second);
+	cout << "GPU time elapsed for GPU method #2: " << cudaTimer.getTimeElapsed() << endl;
+
+	cout << "CPU time elapsed for GPU method #2: " << cpuTimer.getTimeElapsed() << endl;
+	
+	return thrust::host_vector<int>(d_counts.begin(), endPosition.second);
 
 	return thrust::host_vector<int>();
 

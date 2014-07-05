@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 	const int YSIZE = 248;
 	const int ZSIZE = 248;
 	*/
-	const int XSIZE = 2;
+	const int XSIZE = 8;
 	const int YSIZE = 1;
 	const int ZSIZE = 1;
 

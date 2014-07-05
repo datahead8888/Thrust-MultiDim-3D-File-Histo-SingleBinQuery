@@ -140,7 +140,7 @@ struct SingleToMultiDim
 		for (int j = cols - 1; j >= 0; j--)
 		{
 			//newValue += (rawVector[singleDimIndex * cols + j] - 1) * factor;
-			int moddedValue = dataValue % 4 + 1;
+			int moddedValue = dataValue % 4;
 			rawVector[singleDimIndex * cols + j] = moddedValue;
 			dataValue /= 4;
 
