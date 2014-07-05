@@ -38,11 +38,7 @@ int main(int argc, char *argv[])
 	 
 	//cout << endl;
 	//generateRandomData(ROWS, COLS, MAX, h_data);
-
 	
-
-	//thrust::host_vector<int> b_data = h_data;
-
 	try
 	{
 		//loadTextFile("multifield.0001.txt", XSIZE, YSIZE, ZSIZE, NUMVARS, h_data, h_data.size());
@@ -55,6 +51,9 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	//We may not want to do this going forward:
+	thrust::host_vector<int> b_data = h_data;
+
 	#ifdef IS_LOGGING
 	cout << "Input data:" << endl;
 	printData(XSIZE * YSIZE * ZSIZE, NUMVARS, 10, h_data);
@@ -66,7 +65,7 @@ int main(int argc, char *argv[])
 
 	thrust::host_vector<int> resultVector1 = doHistogramGPU(XSIZE, YSIZE, ZSIZE, NUMVARS, h_data);
 
-	/*
+	
 	//generateRandomData(ROWS, COLS, MAX, h_data);
 
 	//#ifdef IS_LOGGING
@@ -74,7 +73,7 @@ int main(int argc, char *argv[])
 	//printData(ROWS, COLS, 5, h_data);
 	//#endif
 
-	std::vector<int> resultVector2 = doHistogramCPU(ROWS, COLS, b_data);
+	std::vector<int> resultVector2 = doHistogramCPU(XSIZE, YSIZE, ZSIZE, NUMVARS, b_data);
 
 	#ifdef PRINT_RESULT
 	cout << "Histogram from GPU:" << endl;
@@ -92,7 +91,7 @@ int main(int argc, char *argv[])
 	}
 	cout << endl;
 	#endif
-	*/
+	
 	
 	
 	

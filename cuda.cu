@@ -448,12 +448,18 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 
 }
 
-std::vector<int> doHistogramCPU(int ROWS, int COLS, thrust::host_vector<int> & h_data)
+std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<int> & h_data)
 {		
 	//Reference: http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
 	//Timing code start
+
+	int rows = xSize * ySize * zSize;
+
 	WindowsCpuTimer cpuTimer;
 	cpuTimer.startTimer();
+
+	float minValues[] = {0, 0, 0, 0, 0, 0, 7.392e-039, 0, 0, 0};
+	float maxValues[] = {1001, 19910, 0.7599, 0.7595, 0.24, 0.2397, 0.1623, 1.1e-007, 3.464e-006, 4.447e-008};
 	
 	
 	#ifdef IS_LOGGING
@@ -464,7 +470,7 @@ std::vector<int> doHistogramCPU(int ROWS, int COLS, thrust::host_vector<int> & h
 	//Calculate the number of elements belonging in each bin on the CPU using a for loop
 	
 	int numElements = 1;
-	for (int i = 0; i < COLS; i++)
+	for (int i = 0; i < numVars; i++)
 	{
 		numElements *= 4;
 	}
@@ -478,32 +484,25 @@ std::vector<int> doHistogramCPU(int ROWS, int COLS, thrust::host_vector<int> & h
 	}
 
 
-	for (int i = 0; i < ROWS; i++)
+	for (int i = 0; i < rows; i++)
 	{
 		int factor = 1;
 		int sum = 0;
-		for (int j = COLS - 1; j >= 0; j--)
+		for (int j = numVars - 1; j >= 0; j--)
 		{
-			//sum += (h_data[i * COLS + j] - 1) * factor;
-			int value = h_data[i * COLS + j];
+			int value = h_data[i * numVars + j];
 
-			int binValue = 0;
+			float min = minValues[j];
+			float max = maxValues[j];
 
-			if (value <= 5)
+			float percentage = (value - min) / float(max - min);
+
+
+			int binValue = percentage * 4;
+
+			if (binValue == 4)
 			{
-				binValue = 0;
-			}
-			else if (value >= 6 && value <= 9)
-			{
-				binValue = 1;
-			}
-			else if (value >= 10 && value <= 14)
-			{
-				binValue = 2;
-			}
-			else
-			{
-				binValue = 3;
+				binValue--;
 			}
 
 			sum += binValue * factor;
@@ -518,9 +517,9 @@ std::vector<int> doHistogramCPU(int ROWS, int COLS, thrust::host_vector<int> & h
 	//Timing code end
 	cpuTimer.stopTimer();
 
-	#ifdef IS_LOGGING
+	#ifdef PRINT_RESULT
 	cout << "Generated histogram:" << endl;
-	printData(finalCounts.size(), 5, thrust::host_vector<int>(finalCounts.begin(), finalCounts.end()));
+	printData(finalCounts.size(), 10, thrust::host_vector<int>(finalCounts.begin(), finalCounts.end()));
 
 	cout << endl;
 	#endif
