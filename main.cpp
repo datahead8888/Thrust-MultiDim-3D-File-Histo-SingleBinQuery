@@ -19,19 +19,24 @@ int main(int argc, char *argv[])
 	//const int ROWS = 20;
 	//const int COLS = 2;
 	
+	/*
 	const int XSIZE = 600;
 	const int YSIZE = 248;
 	const int ZSIZE = 248;
+	*/
+	const int XSIZE = 2;
+	const int YSIZE = 1;
+	const int ZSIZE = 1;
 
 	const int NUMVARS = 10;
-	//const int STEP = 4;
-	const int STEP = 30000000 / 8;  //Cut the data size WAY down while still using the input file
 
-	thrust::host_vector<float> h_data(XSIZE * YSIZE * ZSIZE * NUMVARS / STEP);
+	int rowCount = XSIZE * YSIZE * ZSIZE;
 
-	cout << h_data.size() << endl;
+	thrust::host_vector<float> h_data(rowCount * NUMVARS);
+
+	//cout << h_data.size() << endl;
 	 
-	cout << endl;
+	//cout << endl;
 	//generateRandomData(ROWS, COLS, MAX, h_data);
 
 	
@@ -40,7 +45,8 @@ int main(int argc, char *argv[])
 
 	try
 	{
-		loadTextFile("multifield.0001.txt", XSIZE, YSIZE, ZSIZE, NUMVARS, STEP, h_data);
+		//loadTextFile("multifield.0001.txt", XSIZE, YSIZE, ZSIZE, NUMVARS, h_data, h_data.size());
+		loadTextFile("multifield.0001.txt", XSIZE, YSIZE, ZSIZE, NUMVARS, h_data);
 	}
 	catch (ifstream::failure e)
 	{
@@ -51,14 +57,14 @@ int main(int argc, char *argv[])
 
 	#ifdef IS_LOGGING
 	cout << "Input data:" << endl;
-	printData(XSIZE * YSIZE * ZSIZE / STEP, NUMVARS, 10, h_data);
+	printData(XSIZE * YSIZE * ZSIZE, NUMVARS, 10, h_data);
 	#endif
 
 
 	
 
 
-	thrust::host_vector<int> resultVector1 = doHistogramGPU(XSIZE, YSIZE, ZSIZE, NUMVARS, STEP, h_data);
+	thrust::host_vector<int> resultVector1 = doHistogramGPU(XSIZE, YSIZE, ZSIZE, NUMVARS, h_data);
 
 	/*
 	//generateRandomData(ROWS, COLS, MAX, h_data);

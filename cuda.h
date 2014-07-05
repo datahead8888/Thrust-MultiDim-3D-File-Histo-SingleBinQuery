@@ -13,8 +13,8 @@ void printData(int rows, int cols, int printWidth, thrust::device_vector<int> & 
 void printData(int rows, int cols, int printWidth, thrust::host_vector<int> & data);
 void printData(int rows, int cols, int printWidth, thrust::host_vector<float> & data);
 bool generateRandomData(int rows, int cols, int max, thrust::host_vector<int> & data);
-void loadTextFile(const string & fileName, int xSize, int ySize, int zSize, int numvars, int step, thrust::host_vector<float> & h_data );
-thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int numvars, int step, thrust::host_vector<float> & h_data);
+void loadTextFile(const string & fileName, int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_data );
+thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_data);
 std::vector<int> doHistogramCPU(int ROWS, int COLS, thrust::host_vector<int> & h_data);
 
 #define PRINT_INPUT 1

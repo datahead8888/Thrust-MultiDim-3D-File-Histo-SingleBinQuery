@@ -23,7 +23,7 @@ using namespace std;
 //using namespace cv;
 
 
-void loadTextFile(const string & fileName, int xSize, int ySize, int zSize, int numvars, int step, thrust::host_vector<float> & h_data )
+void loadTextFile(const string & fileName, int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_data )
 {
 	//XSIZE, YSIZE, ZSIZE, NUMVARS, h_data
 
@@ -47,11 +47,11 @@ void loadTextFile(const string & fileName, int xSize, int ySize, int zSize, int 
 	//float density, temperature, ab_H, ab_HP, ab_He, ab_HeP, ab_HePP, ab_HM, ab_H2, ab_H2P;
 	float currentValue = 0;
 
-	for (int z = 0; z < zSize; z += step)
+	for (int z = 0; z < zSize; z++)
 	{
-		for (int y = 0; y < ySize; y += step)
+		for (int y = 0; y < ySize; y++)
 		{
-			for (int x = 0; x < xSize; x += step)
+			for (int x = 0; x < xSize; x++)
 			{
 				for (int v = 0; v < numvars; v++)
 				{
@@ -85,9 +85,9 @@ void loadTextFile(const string & fileName, int xSize, int ySize, int zSize, int 
 					//}
 
 					//Although it is useful sometimes to skip elements in the output, we want the data stored to be contiguous
-					int xx = x / step;
-					int yy = y / step;
-					int zz = z / step;
+					int xx = x;
+					int yy = y;
+					int zz = z;
 
 					/*
 					gridCell.particleDensity[zz * ySize * xSize + yy * xSize + xx] = density;
@@ -103,7 +103,10 @@ void loadTextFile(const string & fileName, int xSize, int ySize, int zSize, int 
 					*/
 					h_data[zz * ySize * xSize * numvars + yy * xSize * numvars + xx * numvars + v] = currentValue;
 
-				}
+					
+
+				} //END: for (int v = 0; v < numvars && keepGoing; v++)
+
 
 			}
 		}
@@ -114,7 +117,7 @@ void loadTextFile(const string & fileName, int xSize, int ySize, int zSize, int 
 
 	cpuTimer.stopTimer();
 
-	cout << "File load time with step size " << step << ": " << cpuTimer.getTimeElapsed() << endl;
+	cout << "File load time: " << cpuTimer.getTimeElapsed() << endl;
 
 
 }
@@ -227,7 +230,7 @@ void printHistoData(int rows, int cols, int printWidth, thrust::host_vector<int>
 
 }
 
-thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int numVars, int step, thrust::host_vector<float> & h_data)
+thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<float> & h_data)
 {
 	int numBins = 4;
 	
@@ -294,7 +297,7 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 
 	#ifdef IS_LOGGING
 	cout << "Printing bin assignment" << endl;
-	printData(xSize * ySize * zSize / step, numVars, 10, d_bins);
+	printData(xSize * ySize * zSize, numVars, 10, d_bins);
 	#endif
 
 	cout << endl;
@@ -328,7 +331,7 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 
 	///////////////////////////////////////////////////////////////////////////////////
 
-	thrust::device_vector<int> d_single_data(xSize * ySize * zSize / step);
+	thrust::device_vector<int> d_single_data(xSize * ySize * zSize);
 
 	thrust::constant_iterator<int> colCountIt(numVars);
 	//thrust::counting_iterator<int> counter(0);
@@ -341,7 +344,7 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 
 	#ifdef IS_LOGGING	
 	cout << "Printing 1-D representation of data - from GPU - Prelim" << endl;
-	printData(xSize * ySize * zSize / step, 5, d_single_data);
+	printData(xSize * ySize * zSize, 5, d_single_data);
 	#endif
 
 	//cout << endl;
