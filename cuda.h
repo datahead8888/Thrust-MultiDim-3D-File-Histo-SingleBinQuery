@@ -9,6 +9,8 @@
 
 using namespace std;
 
+void printData(int rows, int printWidth, thrust::host_vector<int> & data);
+void printDataNoZeroes(int rows, int printWidth, thrust::host_vector<int> & data);
 void printData(int rows, int cols, int printWidth, thrust::device_vector<int> & data);
 void printData(int rows, int cols, int printWidth, thrust::host_vector<int> & data);
 void printData(int rows, int cols, int printWidth, thrust::host_vector<float> & data);

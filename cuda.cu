@@ -147,6 +147,19 @@ void printData(int rows, int printWidth, thrust::host_vector<int> & data)
 
 }
 
+void printDataNoZeroes(int rows, int printWidth, thrust::host_vector<int> & data)
+{
+	for (int i = 0; i < rows; i++)
+	{
+		if (data[i] != 0)
+		{
+			cout << "i = " << i << ":" << setw(printWidth) << data[i] << endl;
+		}
+	
+	}
+
+}
+
 void printData(int rows, int printWidth, thrust::device_vector<int> & data)
 {
 	for (int i = 0; i < rows; i++)
@@ -428,13 +441,15 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 	////Note: We can use the same zipStart and zipEnd iterators as before; we just use a different kernel and a different raw data pointer
 	thrust::for_each(zipStart, zipEnd, SingleToMultiDim(thrust::raw_pointer_cast(devPtr)));
 
+	
+	cudaTimer.stopTimer();
+	cpuTimer.stopTimer();
+
 	#ifdef IS_LOGGING
 	cout << "Final multidimensional representation from GPU" << endl;
 	printHistoData(xSize * ySize * zSize, numVars, 10, thrust::host_vector<int>(d_final_data.begin(), d_final_data.end()), thrust::host_vector<int>(d_counts.begin(), d_counts.end()));
 	#endif
-	//	
-	cudaTimer.stopTimer();
-	cpuTimer.stopTimer();
+
 
 	cout << "GPU time elapsed for GPU method #2: " << cudaTimer.getTimeElapsed() << endl;
 
@@ -517,9 +532,13 @@ std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, th
 	//Timing code end
 	cpuTimer.stopTimer();
 
-	#ifdef PRINT_RESULT
+	//#ifdef PRINT_RESULT
+	#ifdef IS_LOGGING
 	cout << "Generated histogram:" << endl;
-	printData(finalCounts.size(), 10, thrust::host_vector<int>(finalCounts.begin(), finalCounts.end()));
+	//printData(finalCounts.size(), 10, thrust::host_vector<int>(finalCounts.begin(), finalCounts.end()));
+
+	printDataNoZeroes(finalCounts.size(), 10, thrust::host_vector<int>(finalCounts.begin(), finalCounts.end()));
+
 
 	cout << endl;
 	#endif
