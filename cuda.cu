@@ -23,35 +23,32 @@ using namespace std;
 //using namespace cv;
 
 
-void loadTextFile(const string & fileName, int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_data )
+bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_data, int bufferSize, int & xPos, int & yPos, int & zPos )
 {
-	//XSIZE, YSIZE, ZSIZE, NUMVARS, h_data
 
 	WindowsCpuTimer cpuTimer;
 
 	cpuTimer.startTimer();
+
 	/*
 	ifstream inFile;
 	inFile.exceptions(ifstream::failbit | ifstream::badbit);
 	inFile.open(fileName.c_str());
 	*/
-	FILE *infile;
-	if ( (infile = fopen(fileName.c_str(), "r")) == NULL) {
-		fprintf(stderr,"Could not open %s for reading\n", fileName.c_str());
-		//return -2;
-	}
+	
+	
 	
 	//Data from http://sciviscontest.ieeevis.org/2008/data.html
 	//fscanf code below is also borrowed from those pages
 
-	//float density, temperature, ab_H, ab_HP, ab_He, ab_HeP, ab_HePP, ab_HM, ab_H2, ab_H2P;
 	float currentValue = 0;
+	int recordsRead = 0;
 
-	for (int z = 0; z < zSize; z++)
+	for (int z = zPos; z < zSize; z++)
 	{
-		for (int y = 0; y < ySize; y++)
+		for (int y = yPos; y < ySize; y++)
 		{
-			for (int x = 0; x < xSize; x++)
+			for (int x = xPos; x < xSize; x++)
 			{
 				for (int v = 0; v < numvars; v++)
 				{
@@ -62,18 +59,7 @@ void loadTextFile(const string & fileName, int xSize, int ySize, int zSize, int 
 					cout << "Density: " << density << " Temperature: " << temperature << " ab_H " << ab_H << " ab_HP " << ab_HP << " ab_He " << ab_He << " ab_HeP " << ab_HeP << " ab_HEPP " << ab_HePP << " ab_HM " << ab_HM << " ab_H2 "<< ab_H2 << " ab_H2P " << ab_H2P << endl;
 					#endif
 					*/
-					//if (fscanf(infile, "%f %f %f %f %f %f %f %f %f %f",
-					//	&density, &temperature,
-					//	&ab_H, &ab_HP, &ab_He, &ab_HeP, &ab_HePP, &ab_HM, &ab_H2, &ab_H2P) != 10) 
 
-					//{
-					//	#ifdef PRINT_INPUT
-					//	cout << "Couldn't read: " << "x = " << x << " y = " << y << " z = " << z << endl;
-					//	cout << endl;	
-					//	#endif
-					//}
-					//else
-					//{
 					fscanf(infile, "%f", &currentValue);
 
 					#ifdef PRINT_INPUT
@@ -81,43 +67,53 @@ void loadTextFile(const string & fileName, int xSize, int ySize, int zSize, int 
 					//cout << "Density: " << density << " Temperature: " << temperature << " ab_H " << ab_H << " ab_HP " << ab_HP << " ab_He " << ab_He << " ab_HeP " << ab_HeP << " ab_HEPP " << ab_HePP << " ab_HM " << ab_HM << " ab_H2 "<< ab_H2 << " ab_H2P " << ab_H2P << endl;
 					cout << "Value: " << currentValue << endl;
 					#endif
-				
-					//}
-
-					//Although it is useful sometimes to skip elements in the output, we want the data stored to be contiguous
-					int xx = x;
-					int yy = y;
-					int zz = z;
-
-					/*
-					gridCell.particleDensity[zz * ySize * xSize + yy * xSize + xx] = density;
-					gridCell.gasTemperature[zz * ySize * xSize + yy * xSize + xx] = temperature;
-					gridCell.HMass[zz * ySize * xSize + yy * xSize + xx] = ab_H;
-					gridCell.HPlusMass[zz * ySize * xSize + yy * xSize + xx] = ab_HP;
-					gridCell.HeMass[zz * ySize * xSize + yy * xSize + xx] = ab_He;
-					gridCell.HePlusMass[zz * ySize * xSize + yy * xSize + xx] = ab_HeP;
-					gridCell.HePlusPlusMass[zz * ySize * xSize + yy * xSize + xx] = ab_HePP;
-					gridCell.HMinusMass[zz * ySize * xSize + yy * xSize + xx] = ab_HM;
-					gridCell.H2Mass[zz * ySize * xSize + yy * xSize + xx] = ab_H2;
-					gridCell.H2PlusMass[zz * ySize * xSize + yy * xSize + xx] = ab_H2P;
-					*/
-					h_data[zz * ySize * xSize * numvars + yy * xSize * numvars + xx * numvars + v] = currentValue;
 
 					
+					//h_data[z * ySize * xSize * numvars + y * xSize * numvars + x * numvars + v] = currentValue;
+					h_data[recordsRead * numvars + v] = currentValue;
 
 				} //END: for (int v = 0; v < numvars && keepGoing; v++)
 
+				recordsRead++;
+
+				if (recordsRead == bufferSize)
+				{
+					cpuTimer.stopTimer();
+
+					cout << "File load time: " << cpuTimer.getTimeElapsed() << endl;
+
+					xPos = x;
+					yPos = y;
+					zPos = z;
+
+					if (x == xSize - 1 && y == ySize - 1 && z == zSize - 1)
+					{
+						//Would have exited loop if didn't have a file size that is a multiple of the buffer size.  Return false to end the loop in the main function
+						return false;
+					}
+					else
+					{
+						//More data remains in the file.  Return true to keep that loop in the main function going.
+						return true;
+					}
+				}
 
 			}
 		}
 	}
 
-	fclose(infile);
 	/*inFile.close();*/
+
+	if (recordsRead < bufferSize)
+	{
+		h_data.resize(recordsRead * numvars);
+	}
 
 	cpuTimer.stopTimer();
 
 	cout << "File load time: " << cpuTimer.getTimeElapsed() << endl;
+
+	return false;
 
 
 }
@@ -248,7 +244,7 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 	int numBins = 4;
 	
 	thrust::device_vector<float>d_data(h_data.begin(), h_data.end());
-	thrust::device_vector<int>d_bins(d_data.size());
+	thrust::device_vector<int>d_bins(h_data.size());
 
 	auto zipInFirst = thrust::make_zip_iterator(thrust::make_tuple(d_data.begin()));
 	auto zipInLast = thrust::make_zip_iterator(thrust::make_tuple(d_data.end()));
@@ -310,7 +306,7 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 
 	#ifdef IS_LOGGING
 	cout << "Printing bin assignment" << endl;
-	printData(xSize * ySize * zSize, numVars, 10, d_bins);
+	printData(h_data.size() / numVars, numVars, 10, d_bins);
 	#endif
 
 	cout << endl;
@@ -344,7 +340,7 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 
 	///////////////////////////////////////////////////////////////////////////////////
 
-	thrust::device_vector<int> d_single_data(xSize * ySize * zSize);
+	thrust::device_vector<int> d_single_data(h_data.size() / numVars);
 
 	thrust::constant_iterator<int> colCountIt(numVars);
 	//thrust::counting_iterator<int> counter(0);
@@ -357,7 +353,7 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 
 	#ifdef IS_LOGGING	
 	cout << "Printing 1-D representation of data - from GPU - Prelim" << endl;
-	printData(xSize * ySize * zSize, 10, d_single_data);
+	printData(h_data.size() / numVars, 10, d_single_data);
 	#endif
 
 	//cout << endl;
@@ -367,7 +363,7 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 
 	#ifdef IS_LOGGING	
 	cout << "Printing SORTED 1-D representation of data" << endl;
-	printData(xSize * ySize * zSize, 10, d_single_data);
+	printData(h_data.size() / numVars, 10, d_single_data);
 	#endif
 
 	//////Step 3: Use the reduce by key function to get a count of each bin type
@@ -447,7 +443,7 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 
 	#ifdef IS_LOGGING
 	cout << "Final multidimensional representation from GPU" << endl;
-	printHistoData(xSize * ySize * zSize, numVars, 10, thrust::host_vector<int>(d_final_data.begin(), d_final_data.end()), thrust::host_vector<int>(d_counts.begin(), d_counts.end()));
+	printHistoData(h_data.size() / numVars, numVars, 10, thrust::host_vector<int>(d_final_data.begin(), d_final_data.end()), thrust::host_vector<int>(d_counts.begin(), d_counts.end()));
 	#endif
 
 
@@ -457,7 +453,6 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 	
 	return thrust::host_vector<int>(d_counts.begin(), endPosition.second);
 
-	return thrust::host_vector<int>();
 
 	
 
@@ -532,7 +527,6 @@ std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, th
 	//Timing code end
 	cpuTimer.stopTimer();
 
-	//#ifdef PRINT_RESULT
 	#ifdef IS_LOGGING
 	cout << "Generated histogram:" << endl;
 	//printData(finalCounts.size(), 10, thrust::host_vector<int>(finalCounts.begin(), finalCounts.end()));

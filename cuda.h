@@ -4,7 +4,6 @@
 #include <thrust/device_vector.h>
 #include <vector>
 #include <iostream>
-//#include <opencv2/opencv.hpp>
 
 
 using namespace std;
@@ -15,11 +14,11 @@ void printData(int rows, int cols, int printWidth, thrust::device_vector<int> & 
 void printData(int rows, int cols, int printWidth, thrust::host_vector<int> & data);
 void printData(int rows, int cols, int printWidth, thrust::host_vector<float> & data);
 bool generateRandomData(int rows, int cols, int max, thrust::host_vector<int> & data);
-void loadTextFile(const string & fileName, int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_data );
+bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_data, int bufferSize, int & xPos, int & yPos, int & zPos);
 thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_data);
 std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<float> & h_data);
 
-#define PRINT_INPUT 1
+//#define PRINT_INPUT 1
 #define IS_LOGGING 1
 //#define PRINT_RESULT 1
 
