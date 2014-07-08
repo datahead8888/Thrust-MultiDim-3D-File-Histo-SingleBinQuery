@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 	}
 
 	//We may not want to do this going forward:
-	thrust::host_vector<int> b_data = h_data;
+	thrust::host_vector<float> b_data = h_data;
 
 	#ifdef IS_LOGGING
 	cout << "Input data:" << endl;

@@ -463,7 +463,7 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 
 }
 
-std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<int> & h_data)
+std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<float> & h_data)
 {		
 	//Reference: http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
 	//Timing code start
@@ -505,7 +505,7 @@ std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, th
 		int sum = 0;
 		for (int j = numVars - 1; j >= 0; j--)
 		{
-			int value = h_data[i * numVars + j];
+			float value = h_data[i * numVars + j];
 
 			float min = minValues[j];
 			float max = maxValues[j];
