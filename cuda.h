@@ -8,6 +8,8 @@
 
 using namespace std;
 
+typedef thrust::device_vector<int>::iterator DVI;
+
 void printData(int rows, int printWidth, thrust::host_vector<int> & data);
 void printDataNoZeroes(int rows, int printWidth, thrust::host_vector<int> & data);
 void printData(int rows, int cols, int printWidth, thrust::device_vector<int> & data);
@@ -15,12 +17,13 @@ void printData(int rows, int cols, int printWidth, thrust::host_vector<int> & da
 void printData(int rows, int cols, int printWidth, thrust::host_vector<float> & data);
 bool generateRandomData(int rows, int cols, int max, thrust::host_vector<int> & data);
 bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_data, int bufferSize, int & xPos, int & yPos, int & zPos);
-thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_data);
+void doHistogramGPU(int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_buffer, thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2);
+void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, thrust::pair<DVI, DVI> & endPosition);
 std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<float> & h_data);
 
 //#define PRINT_INPUT 1
 #define IS_LOGGING 1
-//#define PRINT_RESULT 1
+#define PRINT_RESULT 1
 
 typedef thrust::tuple<int, int, int> Int3;
 typedef thrust::tuple<int, int> Int2;

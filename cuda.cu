@@ -39,7 +39,7 @@ bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, th
 	
 	
 	//Data from http://sciviscontest.ieeevis.org/2008/data.html
-	//fscanf code below is also borrowed from those pages
+	//fscanf code below is also partially borrowed from those pages
 
 	float currentValue = 0;
 	int recordsRead = 0;
@@ -50,6 +50,7 @@ bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, th
 		{
 			for (int x = xPos; x < xSize; x++)
 			{
+				bool hadEOF = false;
 				for (int v = 0; v < numvars; v++)
 				{
 					/*
@@ -62,31 +63,52 @@ bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, th
 
 					fscanf(infile, "%f", &currentValue);
 
+					if (feof(infile))
+					{
+						hadEOF = true;
+						break;
+					}
+
 					#ifdef PRINT_INPUT
 					cout << "x = " << x << " y = " << y << " z = " << z << " v = " << v << endl;
 					//cout << "Density: " << density << " Temperature: " << temperature << " ab_H " << ab_H << " ab_HP " << ab_HP << " ab_He " << ab_He << " ab_HeP " << ab_HeP << " ab_HEPP " << ab_HePP << " ab_HM " << ab_HM << " ab_H2 "<< ab_H2 << " ab_H2P " << ab_H2P << endl;
 					cout << "Value: " << currentValue << endl;
 					#endif
 
-					
-					//h_data[z * ySize * xSize * numvars + y * xSize * numvars + x * numvars + v] = currentValue;
 					h_data[recordsRead * numvars + v] = currentValue;
 
 				} //END: for (int v = 0; v < numvars && keepGoing; v++)
 
 				recordsRead++;
 
-				if (recordsRead == bufferSize)
+				if (recordsRead == bufferSize || hadEOF)
 				{
 					cpuTimer.stopTimer();
 
 					cout << "File load time: " << cpuTimer.getTimeElapsed() << endl;
 
-					xPos = x;
-					yPos = y;
-					zPos = z;
+					
+					//Hacky code to store the proper x, y, and z values to pick up on the for loop next time
+					x++;
+					
+					if (x >= xSize)
+					{
+						y++;
+						x = 0;
+					}
+					
+					if (y >= ySize)
+					{
+						z++;
+						x = 0;
+						y = 0;
+					}
+										
 
-					if (x == xSize - 1 && y == ySize - 1 && z == zSize - 1)
+					
+					xPos = x; yPos = y; zPos = z;
+
+					if (x >= xSize && y >= ySize && z >= zSize)
 					{
 						//Would have exited loop if didn't have a file size that is a multiple of the buffer size.  Return false to end the loop in the main function
 						return false;
@@ -104,16 +126,29 @@ bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, th
 
 	/*inFile.close();*/
 
+	//If records were read, we will return true so that the loop that calls this can do one more iteration.
+	//It will then try to call this function again.  We need to set the x, y, and z starting positions so that no records will be read next time.
+	xPos = xSize;
+	yPos = ySize;
+	zPos = zSize;
+
 	if (recordsRead < bufferSize)
 	{
 		h_data.resize(recordsRead * numvars);
 	}
 
 	cpuTimer.stopTimer();
-
 	cout << "File load time: " << cpuTimer.getTimeElapsed() << endl;
 
-	return false;
+
+	if (recordsRead == 0)
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
 
 
 }
@@ -239,12 +274,12 @@ void printHistoData(int rows, int cols, int printWidth, thrust::host_vector<int>
 
 }
 
-thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<float> & h_data)
+void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<float> & h_buffer, thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2)
 {
 	int numBins = 4;
 	
-	thrust::device_vector<float>d_data(h_data.begin(), h_data.end());
-	thrust::device_vector<int>d_bins(h_data.size());
+	thrust::device_vector<float>d_data(h_buffer.begin(), h_buffer.end());
+	thrust::device_vector<int>d_bins(h_buffer.size());
 
 	auto zipInFirst = thrust::make_zip_iterator(thrust::make_tuple(d_data.begin()));
 	auto zipInLast = thrust::make_zip_iterator(thrust::make_tuple(d_data.end()));
@@ -306,41 +341,15 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 
 	#ifdef IS_LOGGING
 	cout << "Printing bin assignment" << endl;
-	printData(h_data.size() / numVars, numVars, 10, d_bins);
+	printData(h_buffer.size() / numVars, numVars, 10, d_bins);
 	#endif
 
 	cout << endl;
 	
 
 	////Phase 2: Convert this effectively multi-dimensional vector into a one dimensional vector
-	//
-	///*
-	//h_data = d_data; //Copy from device_vector back to host_vector, since this code is currently executed on the CPU
 
-	//thrust::host_vector<int> h_single_data(ROWS);
-
-	//for (int i = 0; i < ROWS; i++)
-	//{
-	//	h_single_data[i] = 0;
-	//	int factor = 1;
-	//	for (int j = COLS - 1; j >= 0; j--)
-	//	{
-	//		h_single_data[i] += (h_data[i * COLS + j] - 1) * factor;
-
-	//		factor *= 4;
-
-	//	}
-	//}
-
-	//#ifdef IS_LOGGING	
-	//cout << "Printing 1-D representation of data - from CPU" << endl;
-	//printData(ROWS, 5, h_single_data);
-	//#endif
-	//*/
-
-	///////////////////////////////////////////////////////////////////////////////////
-
-	thrust::device_vector<int> d_single_data(h_data.size() / numVars);
+	thrust::device_vector<int> d_single_data(h_buffer.size() / numVars);
 
 	thrust::constant_iterator<int> colCountIt(numVars);
 	//thrust::counting_iterator<int> counter(0);
@@ -353,7 +362,7 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 
 	#ifdef IS_LOGGING	
 	cout << "Printing 1-D representation of data - from GPU - Prelim" << endl;
-	printData(h_data.size() / numVars, 10, d_single_data);
+	printData(h_buffer.size() / numVars, 10, d_single_data);
 	#endif
 
 	//cout << endl;
@@ -363,14 +372,14 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 
 	#ifdef IS_LOGGING	
 	cout << "Printing SORTED 1-D representation of data" << endl;
-	printData(h_data.size() / numVars, 10, d_single_data);
+	printData(h_buffer.size() / numVars, 10, d_single_data);
 	#endif
 
 	//////Step 3: Use the reduce by key function to get a count of each bin type
 	thrust::constant_iterator<int> cit(1);
 	thrust::device_vector<int> d_counts(d_single_data.size());  //4 ^ 3
 
-	typedef thrust::device_vector<int>::iterator DVI;
+	//typedef thrust::device_vector<int>::iterator DVI;
 
 	thrust::pair<DVI, DVI> endPosition = thrust::reduce_by_key(d_single_data.begin(), d_single_data.end(), cit, d_single_data.begin(), d_counts.begin());
 
@@ -400,61 +409,75 @@ thrust::host_vector<int> doHistogramGPU(int xSize, int ySize, int zSize, int num
 	cout << endl;
 	#endif
 	
-
-	///*
-	//thrust::host_vector<int> final_data (d_single_data.size() * COLS);
-
-	////Multidimensional representation reconstruction - CPU
-	//int i = 0;
-	//for (DVI it = d_single_data.begin(); it != endPosition.first; it++, i++)
-	//{
-	//	int value = *it;
-
-	//	for (int j = COLS - 1; j >= 0; j--)
-	//	{
-	//		int moddedValue = value % 4 + 1;
-	//		final_data[i * COLS + j] = moddedValue;
-	//		value /= 4;
-
-	//	}
-	//}
-
-	//#ifdef IS_LOGGING
-	//cout << "Final multidimensional representation from CPU" << endl;
-	//printHistoData(i, COLS, 5, final_data, thrust::host_vector<int>(d_counts.begin(), d_counts.end()));
-	//#endif
-	//*/
-
+	h_data.insert(h_data.begin(), d_single_data.begin(), endPosition.first);
+	h_data2.insert(h_data2.begin(), d_counts.begin(), endPosition.second);
+	
+	/*
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////Multidimensional representation construction - GPU...
 	thrust::device_vector<int> d_final_data (d_single_data.size() * numVars);
 	devPtr = &d_final_data[0];
-
-	//auto zipStart = thrust::make_zip_iterator(thrust::make_tuple(counter, colCountIt, d_single_data.begin()));
-	//auto zipEnd = thrust::make_zip_iterator(thrust::make_tuple(counter + d_single_data.size(), colCountIt + d_single_data.size(), d_single_data.end()));
-
-	//
+	
 	////Note: We can use the same zipStart and zipEnd iterators as before; we just use a different kernel and a different raw data pointer
 	thrust::for_each(zipStart, zipEnd, SingleToMultiDim(thrust::raw_pointer_cast(devPtr)));
-
+	*/
 	
 	cudaTimer.stopTimer();
 	cpuTimer.stopTimer();
 
+	/*
 	#ifdef IS_LOGGING
 	cout << "Final multidimensional representation from GPU" << endl;
-	printHistoData(h_data.size() / numVars, numVars, 10, thrust::host_vector<int>(d_final_data.begin(), d_final_data.end()), thrust::host_vector<int>(d_counts.begin(), d_counts.end()));
+	printHistoData(h_buffer.size() / numVars, numVars, 10, thrust::host_vector<int>(d_final_data.begin(), d_final_data.end()), thrust::host_vector<int>(d_counts.begin(), d_counts.end()));
 	#endif
-
+	*/
 
 	cout << "GPU time elapsed for GPU method #2: " << cudaTimer.getTimeElapsed() << endl;
 
 	cout << "CPU time elapsed for GPU method #2: " << cpuTimer.getTimeElapsed() << endl;
 	
-	return thrust::host_vector<int>(d_counts.begin(), endPosition.second);
+	
 
 
 	
+
+}
+
+//h_data - the keys
+//h_data2 - the counts
+void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, thrust::pair<DVI, DVI> & endPosition)
+{
+	
+	thrust::device_vector<int> d_data(h_data.begin(), h_data.end());
+	thrust::device_vector<int> d_data2(h_data2.begin(), h_data2.end());
+
+	
+	//thrust::sort_by_key(d_data.begin(), d_data.end(), d_data2.begin());
+
+	endPosition = thrust::reduce_by_key(d_data.begin(), d_data.end(), d_data2.begin(), d_data.begin(), d_data2.begin());
+
+	h_data.clear();
+	h_data2.clear();
+
+	h_data.insert(h_data.end(), d_data.begin(), endPosition.first);
+	h_data2.insert(h_data2.end(), d_data2.begin(), endPosition.second);
+	/*
+	#ifdef IS_LOGGING
+
+	for (DVI it = d_data.begin(); it != endPosition.first; it++)
+	{
+		cout << setw(4) << *it << " ";
+	}
+		
+	cout << endl << "Counts:" << endl;
+
+	for (DVI it = d_data.begin(); it != endPosition.second; it++)
+	{
+		cout << setw(4) << *it << " ";
+	}
+
+	#endif
+	*/
 
 }
 
