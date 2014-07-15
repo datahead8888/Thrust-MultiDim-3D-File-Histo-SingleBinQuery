@@ -18,8 +18,9 @@ void printData(int rows, int cols, int printWidth, thrust::host_vector<float> & 
 bool generateRandomData(int rows, int cols, int max, thrust::host_vector<int> & data);
 bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_data, int bufferSize, int & xPos, int & yPos, int & zPos);
 void doHistogramGPU(int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_buffer, thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2);
-void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, thrust::pair<DVI, DVI> & endPosition);
+void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, thrust::pair<DVI, DVI> & endPosition, int numVars);
 std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<float> & h_data);
+void printHistoData(int rows, int cols, int printWidth, thrust::host_vector<int> & multiDimKeys, thrust::host_vector<int> & counts);
 
 //#define PRINT_INPUT 1
 #define IS_LOGGING 1

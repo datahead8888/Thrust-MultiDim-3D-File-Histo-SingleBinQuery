@@ -8,12 +8,33 @@
 #include <iostream>
 #include <fstream>
 
+//#include <vtkExecutive.h>
+#include <vtkStructuredPointsReader.h>
+#include <vtkSmartPointer.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
+#include <vtkStructuredPoints.h>
 
+
+#include <vtkImageDataGeometryFilter.h>
+#include <vtkPolyDataMapper.h>
+#include <vtkActor.h>
+#include <vtkRenderWindow.h>
+#include <vtkRenderWindowInteractor.h>
+#include <vtkRenderer.h>
 
 using namespace std;
+
+//bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_data, int bufferSize, int & xPos, int & yPos, int & zPos );
+
+///bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_data, int bufferSize, int & xPos, int & yPos, int & zPos )
+
 int main(int argc, char *argv[])
 {
 	
+
+
+
+
 	srand(time(0));
 	
 	
@@ -23,7 +44,7 @@ int main(int argc, char *argv[])
 	const int ZSIZE = 248;
 	*/
 	
-	const int XSIZE = 5;
+	const int XSIZE = 8;
 	const int YSIZE = 1;
 	const int ZSIZE = 1;
 	
@@ -91,28 +112,21 @@ int main(int argc, char *argv[])
 	cout << endl;
 	#endif
 
+
 	thrust::pair<DVI, DVI> endPosition;
-	histogramMapReduceGPU(h_data, h_data2, endPosition);
+	histogramMapReduceGPU(h_data, h_data2, endPosition, NUMVARS);
 
-	//Next step: write some code to use iterators go go up to the end position first/second
-	//We also could find the size of the number of elements nad use
-	#ifdef PRINT_RESULT
-	cout << "Did final map reduce..." << endl;
-	cout << "GPU Keys:" << endl;
-	for (int i = 0; i < h_data.size(); i++)
-	{
-		cout << h_data[i] << " ";
-	}
-	cout << endl;
-
-	
-	cout << "GPU Counts:" << endl;
-	for (int i = 0; i < h_data2.size(); i++)
-	{
-		cout << h_data2[i] << " ";
-	}
-	cout << endl;
+	#ifdef IS_LOGGING
+	cout << "Final multidimensional representation from GPU" << endl;
+	printHistoData(h_data.size() / NUMVARS, NUMVARS, 10, h_data, h_data2);
 	#endif
+	
+	
+	
+	
+
+
+	//////Render a histogram in VTK
 
 	
 	
@@ -124,6 +138,8 @@ int main(int argc, char *argv[])
         
 
 }
+
+
 
 
 

@@ -15,12 +15,13 @@
 #include <thrust/sort.h>
 #include <thrust/adjacent_difference.h>
 #include <thrust/iterator/constant_iterator.h>
-//#include <opencv2/opencv.hpp>
+//#include <vtkExecutive.h>
+//#include <vtkStructuredPointsReader.h>
+//#include <vtkAlgorithm.h>
 
 #include <Windows.h>
 
 using namespace std;
-//using namespace cv;
 
 
 bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_data, int bufferSize, int & xPos, int & yPos, int & zPos )
@@ -30,11 +31,6 @@ bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, th
 
 	cpuTimer.startTimer();
 
-	/*
-	ifstream inFile;
-	inFile.exceptions(ifstream::failbit | ifstream::badbit);
-	inFile.open(fileName.c_str());
-	*/
 	
 	
 	
@@ -123,8 +119,6 @@ bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, th
 			}
 		}
 	}
-
-	/*inFile.close();*/
 
 	//If records were read, we will return true so that the loop that calls this can do one more iteration.
 	//It will then try to call this function again.  We need to set the x, y, and z starting positions so that no records will be read next time.
@@ -412,15 +406,7 @@ void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_v
 	h_data.insert(h_data.begin(), d_single_data.begin(), endPosition.first);
 	h_data2.insert(h_data2.begin(), d_counts.begin(), endPosition.second);
 	
-	/*
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////
-	////Multidimensional representation construction - GPU...
-	thrust::device_vector<int> d_final_data (d_single_data.size() * numVars);
-	devPtr = &d_final_data[0];
 	
-	////Note: We can use the same zipStart and zipEnd iterators as before; we just use a different kernel and a different raw data pointer
-	thrust::for_each(zipStart, zipEnd, SingleToMultiDim(thrust::raw_pointer_cast(devPtr)));
-	*/
 	
 	cudaTimer.stopTimer();
 	cpuTimer.stopTimer();
@@ -445,24 +431,21 @@ void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_v
 
 //h_data - the keys
 //h_data2 - the counts
-void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, thrust::pair<DVI, DVI> & endPosition)
+void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, thrust::pair<DVI, DVI> & endPosition, int numVars)
 {
 	
 	thrust::device_vector<int> d_data(h_data.begin(), h_data.end());
 	thrust::device_vector<int> d_data2(h_data2.begin(), h_data2.end());
 
 	
-	//thrust::sort_by_key(d_data.begin(), d_data.end(), d_data2.begin());
+	thrust::sort_by_key(d_data.begin(), d_data.end(), d_data2.begin());
 
 	endPosition = thrust::reduce_by_key(d_data.begin(), d_data.end(), d_data2.begin(), d_data.begin(), d_data2.begin());
 
-	h_data.clear();
-	h_data2.clear();
-
-	h_data.insert(h_data.end(), d_data.begin(), endPosition.first);
-	h_data2.insert(h_data2.end(), d_data2.begin(), endPosition.second);
-	/*
 	#ifdef IS_LOGGING
+
+	cout << "Did final map reduce..." << endl;
+	cout << "GPU Keys:" << endl;                               //The new "d_single_data"
 
 	for (DVI it = d_data.begin(); it != endPosition.first; it++)
 	{
@@ -471,13 +454,39 @@ void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vecto
 		
 	cout << endl << "Counts:" << endl;
 
-	for (DVI it = d_data.begin(); it != endPosition.second; it++)
+	cout << "GPU Counts:" << endl;
+
+	for (DVI it = d_data2.begin(); it != endPosition.second; it++)
 	{
 		cout << setw(4) << *it << " ";
 	}
 
+	cout << endl;
 	#endif
-	*/
+	
+	int d_data_size = endPosition.first - d_data.begin();
+
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////Multidimensional representation construction - GPU...
+	thrust::counting_iterator<int> counter(0);
+	thrust::constant_iterator<int> colCountIt(numVars);
+	
+	auto zipStart = thrust::make_zip_iterator(thrust::make_tuple(counter, colCountIt, d_data.begin()));
+	auto zipEnd = thrust::make_zip_iterator(thrust::make_tuple(counter + d_data_size, colCountIt + d_data_size, endPosition.first));
+
+
+	thrust::device_vector<int> d_final_data (d_data_size * numVars);
+	thrust::device_ptr<int> devPtr = &d_final_data[0];
+	
+	////Note: We can use the same zipStart and zipEnd iterators as before; we just use a different kernel and a different raw data pointer
+	thrust::for_each(zipStart, zipEnd, SingleToMultiDim(thrust::raw_pointer_cast(devPtr)));
+
+	//WIP Section below
+	h_data.clear();
+	h_data2.clear();
+
+	h_data.insert(h_data.end(), d_final_data.begin(), d_final_data.end());
+	h_data2.insert(h_data2.end(), d_data2.begin(), endPosition.second);
 
 }
 
