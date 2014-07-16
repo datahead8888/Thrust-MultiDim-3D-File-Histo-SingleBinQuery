@@ -21,6 +21,16 @@
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkRenderer.h>
+#include <vtkFloatArray.h>
+#include <vtkImageData.h>
+#include <vtkPointData.h>
+#include <vtkChartHistogram2D.h>
+//#include <vtkRenderer.h>
+//#include <vtkRenderWindow.h>
+//#include <vtkRenderWindowInteractor.h>
+#include <vtkContextView.h>
+#include <vtkContextScene.h>
+
 
 using namespace std;
 
@@ -122,13 +132,32 @@ int main(int argc, char *argv[])
 	#endif
 	
 	
-	
-	
-
-
 	//////Render a histogram in VTK
+	vtkFloatArray * floatArray = vtkFloatArray::New();
+	floatArray ->SetNumberOfComponents(3);
+	for (int i = 0; i < h_data.size() / NUMVARS; i++)
+	{
+		floatArray -> InsertNextTuple3(h_data[i * NUMVARS], h_data[i * NUMVARS + 1], h_data[i * NUMVARS + 2]);
+	}
 
-	
+	//Reference: http://www.vtk.org/pipermail/vtkusers/2002-June/011682.html
+	vtkImageData * imageData = vtkImageData::New();
+	imageData -> SetDimensions(h_data.size() / NUMVARS, 1, 1);
+	imageData -> GetPointData() -> SetScalars(floatArray);
+
+	vtkChartHistogram2D * chart = vtkChartHistogram2D::New();
+	chart ->SetInputData(imageData);
+	chart ->SetRenderEmpty(true);
+
+	//vtkRenderer * renderer = vtkRenderer::New();
+	//renderer ->AddActor(chart);
+
+	vtkContextView * view = vtkContextView::New();
+	view ->GetScene() ->AddItem(chart);
+
+	view ->GetInteractor() -> Initialize();
+	view ->GetInteractor() -> Start();
+
 	
 	fclose(inFile);
 
