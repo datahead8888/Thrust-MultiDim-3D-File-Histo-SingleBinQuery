@@ -44,9 +44,6 @@ int main(int argc, char *argv[])
 	
 
 
-
-
-	srand(time(0));
 	
 	
 	/*
@@ -55,13 +52,13 @@ int main(int argc, char *argv[])
 	const int ZSIZE = 248;
 	*/
 	
-	const int XSIZE = 8;
+	const int XSIZE = 1000;
 	const int YSIZE = 1;
 	const int ZSIZE = 1;
 	
 	const int NUMVARS = 10;
 	int rowCount = XSIZE * YSIZE * ZSIZE;
-	int bufferSize = 2;
+	int bufferSize = 100;
 
 	thrust::host_vector<float> h_buffer(bufferSize * NUMVARS);
 	thrust::host_vector<int> h_data;
@@ -138,8 +135,8 @@ int main(int argc, char *argv[])
 	floatArray ->SetNumberOfComponents(3);
 	for (int i = 0; i < h_data.size() / NUMVARS; i++)
 	{
-		//floatArray -> InsertNextTuple3(h_data[i * NUMVARS] / 4.0, h_data[i * NUMVARS + 1] / 4.0, h_data[i * NUMVARS + 2] / 4.0);
-		floatArray -> InsertNextTuple3(0.0, 0.0, 0.0);
+		floatArray -> InsertNextTuple3(h_data[i * NUMVARS], h_data[i * NUMVARS + 1], h_data[i * NUMVARS + 2]);
+		//floatArray -> InsertNextTuple3(0.0, 0.0, 0.0);
 	}
 
 	//Reference: http://www.vtk.org/pipermail/vtkusers/2002-June/011682.html
@@ -156,7 +153,7 @@ int main(int argc, char *argv[])
 	//Based on: https://github.com/qsnake/vtk/blob/master/Charts/Testing/Cxx/TestHistogram2D.cxx
 	vtkColorTransferFunction * colorFunction = vtkColorTransferFunction::New();
 
-	colorFunction -> AddRGBSegment(0.0f, 0.0, 1.0, 0.0, 1.0, 0.0f, 0.0f, 1.0f);
+	colorFunction -> AddRGBSegment(0.0f, 0.0, 1.0, 0.0, 4.0, 0.0f, 0.0f, 1.0f);
 
 	colorFunction -> Build();
 
