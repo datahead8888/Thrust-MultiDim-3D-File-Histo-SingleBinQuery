@@ -30,6 +30,7 @@
 //#include <vtkRenderWindowInteractor.h>
 #include <vtkContextView.h>
 #include <vtkContextScene.h>
+#include <vtkColorTransferFunction.h>
 
 
 using namespace std;
@@ -137,7 +138,8 @@ int main(int argc, char *argv[])
 	floatArray ->SetNumberOfComponents(3);
 	for (int i = 0; i < h_data.size() / NUMVARS; i++)
 	{
-		floatArray -> InsertNextTuple3(h_data[i * NUMVARS], h_data[i * NUMVARS + 1], h_data[i * NUMVARS + 2]);
+		//floatArray -> InsertNextTuple3(h_data[i * NUMVARS] / 4.0, h_data[i * NUMVARS + 1] / 4.0, h_data[i * NUMVARS + 2] / 4.0);
+		floatArray -> InsertNextTuple3(0.0, 0.0, 0.0);
 	}
 
 	//Reference: http://www.vtk.org/pipermail/vtkusers/2002-June/011682.html
@@ -149,9 +151,17 @@ int main(int argc, char *argv[])
 	chart ->SetInputData(imageData);
 	chart ->SetRenderEmpty(true);
 
-	//vtkRenderer * renderer = vtkRenderer::New();
-	//renderer ->AddActor(chart);
+	
+	
+	//Based on: https://github.com/qsnake/vtk/blob/master/Charts/Testing/Cxx/TestHistogram2D.cxx
+	vtkColorTransferFunction * colorFunction = vtkColorTransferFunction::New();
 
+	colorFunction -> AddRGBSegment(0.0f, 0.0, 1.0, 0.0, 1.0, 0.0f, 0.0f, 1.0f);
+
+	colorFunction -> Build();
+
+	chart ->SetTransferFunction(colorFunction);
+	
 	vtkContextView * view = vtkContextView::New();
 	view ->GetScene() ->AddItem(chart);
 
