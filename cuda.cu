@@ -268,7 +268,7 @@ void printHistoData(int rows, int cols, int printWidth, thrust::host_vector<int>
 
 }
 
-void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<float> & h_buffer, thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, int numBins)
+void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<float> & h_buffer, thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, int numBins, CudaTimer & cudaTimer, WindowsCpuTimer & cpuTimer)
 {
 	
 	thrust::device_vector<float>d_data(h_buffer.begin(), h_buffer.end());
@@ -279,8 +279,7 @@ void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_v
 	auto zipOutFirst = thrust::make_zip_iterator(thrust::make_tuple(d_bins.begin()));
 	thrust::counting_iterator<int> counter(0);
 	
-	CudaTimer cudaTimer;
-	WindowsCpuTimer cpuTimer;
+	
 	
 	//Reference: http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
 	
@@ -417,9 +416,9 @@ void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_v
 	#endif
 	*/
 
-	cout << "GPU time elapsed for GPU method #2: " << cudaTimer.getTimeElapsed() << endl;
+	cout << "GPU time elapsed for GPU method: " << cudaTimer.getTimeElapsed() << endl;
 
-	cout << "CPU time elapsed for GPU method #2: " << cpuTimer.getTimeElapsed() << endl;
+	cout << "CPU time elapsed for GPU method: " << cpuTimer.getTimeElapsed() << endl;
 	
 	
 
@@ -430,8 +429,10 @@ void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_v
 
 //h_data - the keys
 //h_data2 - the counts
-void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, thrust::pair<DVI, DVI> & endPosition, int numVars, int numBins)
+void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, thrust::pair<DVI, DVI> & endPosition, int numVars, int numBins, CudaTimer & cudaTimer, WindowsCpuTimer & cpuTimer)
 {
+	cudaTimer.startTimer();
+	cpuTimer.startTimer();
 	
 	thrust::device_vector<int> d_data(h_data.begin(), h_data.end());
 	thrust::device_vector<int> d_data2(h_data2.begin(), h_data2.end());
@@ -487,6 +488,12 @@ void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vecto
 	h_data.insert(h_data.end(), d_final_data.begin(), d_final_data.end());
 	h_data2.insert(h_data2.end(), d_data2.begin(), endPosition.second);
 
+	cudaTimer.stopTimer();
+	cpuTimer.stopTimer();
+
+	cout << "GPU time elapsed for GPU map reduce: " << cudaTimer.getTimeElapsed() << endl;
+
+	cout << "CPU time elapsed for GPU map reduce: " << cpuTimer.getTimeElapsed() << endl;
 }
 
 std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<float> & h_data)

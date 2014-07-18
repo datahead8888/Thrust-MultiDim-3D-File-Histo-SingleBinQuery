@@ -1,5 +1,7 @@
 #include <thrust/device_vector.h>
 
+#include "cudaTimer.h"
+#include "windowsCpuTimer.h"
 #include "cuda.h"
 #include <time.h>
 #include <cstdlib>
@@ -78,6 +80,8 @@ int main(int argc, char *argv[])
 
 	int xPos = 0, yPos = 0, zPos = 0;
 
+	CudaTimer cudaTimer;
+	WindowsCpuTimer cpuTimer;
 
 	while (loadTextFile(inFile, XSIZE, YSIZE, ZSIZE, NUMVARS, h_buffer, bufferSize, xPos, yPos, zPos))
 	{
@@ -94,7 +98,7 @@ int main(int argc, char *argv[])
 
 
 		//thrust::host_vector<int> resultVector1 = doHistogramGPU(XSIZE, YSIZE, ZSIZE, NUMVARS, h_buffer);
-		doHistogramGPU(XSIZE, YSIZE, ZSIZE, NUMVARS, h_buffer, h_data, h_data2, NUM_BINS);
+		doHistogramGPU(XSIZE, YSIZE, ZSIZE, NUMVARS, h_buffer, h_data, h_data2, NUM_BINS, cudaTimer, cpuTimer);
 
 
 		
@@ -125,7 +129,7 @@ int main(int argc, char *argv[])
 
 
 	thrust::pair<DVI, DVI> endPosition;
-	histogramMapReduceGPU(h_data, h_data2, endPosition, NUMVARS, NUM_BINS);
+	histogramMapReduceGPU(h_data, h_data2, endPosition, NUMVARS, NUM_BINS, cudaTimer, cpuTimer);
 
 	int numRows = h_data.size() / NUMVARS;
 
