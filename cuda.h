@@ -17,8 +17,8 @@ void printData(int rows, int cols, int printWidth, thrust::host_vector<int> & da
 void printData(int rows, int cols, int printWidth, thrust::host_vector<float> & data);
 bool generateRandomData(int rows, int cols, int max, thrust::host_vector<int> & data);
 bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_data, int bufferSize, int & xPos, int & yPos, int & zPos);
-void doHistogramGPU(int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_buffer, thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2);
-void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, thrust::pair<DVI, DVI> & endPosition, int numVars);
+void doHistogramGPU(int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_buffer, thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, int numBins);
+void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, thrust::pair<DVI, DVI> & endPosition, int numVars, int numBins);
 std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<float> & h_data);
 void printHistoData(int rows, int cols, int printWidth, thrust::host_vector<int> & multiDimKeys, thrust::host_vector<int> & counts);
 
@@ -87,11 +87,13 @@ struct BinFinder
 struct MultiToSingleDim
 {
 	int * rawVector;
+	int numBins;
 
 	
-	MultiToSingleDim(int * rawVector)
+	MultiToSingleDim(int * rawVector, int numBins)
 	{
 		this -> rawVector = rawVector;
+		this -> numBins = numBins;
 	}
 
 	//This kernel assigns each element to a bin group
@@ -110,7 +112,7 @@ struct MultiToSingleDim
 		{
 			newValue += (rawVector[singleDimIndex * cols + j]) * factor;
 
-			factor *= 4;
+			factor *= numBins;
 
 
 		}
@@ -126,11 +128,13 @@ struct MultiToSingleDim
 struct SingleToMultiDim
 {
 	int * rawVector;
+	int numBins;
 
 	
-	SingleToMultiDim(int * rawVector)
+	SingleToMultiDim(int * rawVector, int numBins)
 	{
 		this -> rawVector = rawVector;
+		this -> numBins = numBins;
 	}
 
 	template <typename Tuple>
@@ -145,9 +149,9 @@ struct SingleToMultiDim
 		for (int j = cols - 1; j >= 0; j--)
 		{
 			//newValue += (rawVector[singleDimIndex * cols + j] - 1) * factor;
-			int moddedValue = dataValue % 4;
+			int moddedValue = dataValue % numBins;
 			rawVector[singleDimIndex * cols + j] = moddedValue;
-			dataValue /= 4;
+			dataValue /= numBins;
 
 
 		}

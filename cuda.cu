@@ -268,9 +268,8 @@ void printHistoData(int rows, int cols, int printWidth, thrust::host_vector<int>
 
 }
 
-void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<float> & h_buffer, thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2)
+void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<float> & h_buffer, thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, int numBins)
 {
-	int numBins = 4;
 	
 	thrust::device_vector<float>d_data(h_buffer.begin(), h_buffer.end());
 	thrust::device_vector<int>d_bins(h_buffer.size());
@@ -352,7 +351,7 @@ void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_v
 
 	thrust::device_ptr<int> devPtr = &d_bins[0];
 
-	thrust::for_each(zipStart, zipEnd, MultiToSingleDim(thrust::raw_pointer_cast(devPtr)));
+	thrust::for_each(zipStart, zipEnd, MultiToSingleDim(thrust::raw_pointer_cast(devPtr), numBins));
 
 	#ifdef IS_LOGGING	
 	cout << "Printing 1-D representation of data - from GPU - Prelim" << endl;
@@ -431,7 +430,7 @@ void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_v
 
 //h_data - the keys
 //h_data2 - the counts
-void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, thrust::pair<DVI, DVI> & endPosition, int numVars)
+void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, thrust::pair<DVI, DVI> & endPosition, int numVars, int numBins)
 {
 	
 	thrust::device_vector<int> d_data(h_data.begin(), h_data.end());
@@ -479,7 +478,7 @@ void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vecto
 	thrust::device_ptr<int> devPtr = &d_final_data[0];
 	
 	////Note: We can use the same zipStart and zipEnd iterators as before; we just use a different kernel and a different raw data pointer
-	thrust::for_each(zipStart, zipEnd, SingleToMultiDim(thrust::raw_pointer_cast(devPtr)));
+	thrust::for_each(zipStart, zipEnd, SingleToMultiDim(thrust::raw_pointer_cast(devPtr), numBins));
 
 	//WIP Section below
 	h_data.clear();
@@ -514,7 +513,7 @@ std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, th
 	int numElements = 1;
 	for (int i = 0; i < numVars; i++)
 	{
-		numElements *= 4;
+		numElements *= 4; //numBins!
 	}
 
 
@@ -542,7 +541,7 @@ std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, th
 
 			int binValue = percentage * 4;
 
-			if (binValue == 4)
+			if (binValue == 4) //numBins!
 			{
 				binValue--;
 			}

@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 {
 	
 
-
+	const int NUM_BINS = 10;
 	
 	
 	/*
@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 	const int ZSIZE = 248;
 	*/
 	
-	const int XSIZE = 1000;
+	const int XSIZE = 10000;
 	//const int XSIZE = 600 * 248 * 248;
 	const int YSIZE = 1;
 	const int ZSIZE = 1;
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 
 
 		//thrust::host_vector<int> resultVector1 = doHistogramGPU(XSIZE, YSIZE, ZSIZE, NUMVARS, h_buffer);
-		doHistogramGPU(XSIZE, YSIZE, ZSIZE, NUMVARS, h_buffer, h_data, h_data2);
+		doHistogramGPU(XSIZE, YSIZE, ZSIZE, NUMVARS, h_buffer, h_data, h_data2, NUM_BINS);
 
 
 		
@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
 
 
 	thrust::pair<DVI, DVI> endPosition;
-	histogramMapReduceGPU(h_data, h_data2, endPosition, NUMVARS);
+	histogramMapReduceGPU(h_data, h_data2, endPosition, NUMVARS, NUM_BINS);
 
 	int numRows = h_data.size() / NUMVARS;
 
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 	
 	
 	//////Render a histogram in VTK	
-	int histoSize = 4;
+	int histoSize = NUM_BINS;
 
 	//Reference: http://www.vtk.org/pipermail/vtkusers/2002-June/011682.html
 	vtkImageData * imageData = vtkImageData::New();
@@ -187,7 +187,7 @@ int main(int argc, char *argv[])
 	//chart ->SetRenderEmpty(true);
 
 	//chart ->SetAutoAxes(false);
-	//chart ->GetAxis(vtkAxis::BOTTOM) -> SetRange(1, 10);
+	//chart ->GetAxis(vtkAxis::BOTTOM) -> SetRange(0, 4);
 	//chart ->GetAxis(vtkAxis::BOTTOM) -> SetTitle("Bottom");
 	//chart ->GetAxis(vtkAxis::LEFT) -> SetRange(1, 10);
 	//chart ->GetAxis(vtkAxis::LEFT) -> SetTitle("Left");
