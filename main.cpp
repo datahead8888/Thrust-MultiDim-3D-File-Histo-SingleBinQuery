@@ -31,6 +31,8 @@
 #include <vtkContextView.h>
 #include <vtkContextScene.h>
 #include <vtkColorTransferFunction.h>
+#include <vtkAxis.h>
+#include <vtkInformation.h>
 
 
 using namespace std;
@@ -53,12 +55,13 @@ int main(int argc, char *argv[])
 	*/
 	
 	const int XSIZE = 1000;
+	//const int XSIZE = 600 * 248 * 248;
 	const int YSIZE = 1;
 	const int ZSIZE = 1;
 	
 	const int NUMVARS = 10;
 	int rowCount = XSIZE * YSIZE * ZSIZE;
-	int bufferSize = 100;
+	int bufferSize = XSIZE / 10;
 
 	thrust::host_vector<float> h_buffer(bufferSize * NUMVARS);
 	thrust::host_vector<int> h_data;
@@ -102,7 +105,7 @@ int main(int argc, char *argv[])
 
 	}
 
-	#ifdef PRINT_RESULT
+	#ifdef IS_LOGGING
 	cout << "Did initial reductions (in buffered segments)..." << endl;
 	cout << "GPU Keys:" << endl;
 	for (int i = 0; i < h_data.size(); i++)
@@ -124,36 +127,85 @@ int main(int argc, char *argv[])
 	thrust::pair<DVI, DVI> endPosition;
 	histogramMapReduceGPU(h_data, h_data2, endPosition, NUMVARS);
 
-	#ifdef IS_LOGGING
+	int numRows = h_data.size() / NUMVARS;
+
+	#ifdef PRINT_RESULT
 	cout << "Final multidimensional representation from GPU" << endl;
-	printHistoData(h_data.size() / NUMVARS, NUMVARS, 10, h_data, h_data2);
+	printHistoData(numRows, NUMVARS, 10, h_data, h_data2);
 	#endif
 	
 	
 	//////Render a histogram in VTK
-	vtkFloatArray * floatArray = vtkFloatArray::New();
-	floatArray ->SetNumberOfComponents(3);
-	for (int i = 0; i < h_data.size() / NUMVARS; i++)
-	{
-		floatArray -> InsertNextTuple3(h_data[i * NUMVARS], h_data[i * NUMVARS + 1], h_data[i * NUMVARS + 2]);
-		//floatArray -> InsertNextTuple3(0.0, 0.0, 0.0);
-	}
+	
+	//vtkFloatArray * floatArray = vtkFloatArray::New();
+	//floatArray ->SetNumberOfComponents(2);
+	//for (int i = 0; i < h_data.size() / NUMVARS; i++)
+	//{
+	//	//floatArray -> InsertNextTuple3(h_data[i * NUMVARS], h_data[i * NUMVARS + 1], h_data[i * NUMVARS + 2]);
+	//	floatArray -> InsertNextTuple2(h_data[i * NUMVARS], h_data[i * NUMVARS + 1]);
+	//	//floatArray -> InsertNextTuple3(0.0, 0.0, 0.0);
+	//}
+	
+	int histoSize = 4;
 
 	//Reference: http://www.vtk.org/pipermail/vtkusers/2002-June/011682.html
 	vtkImageData * imageData = vtkImageData::New();
-	imageData -> SetDimensions(h_data.size() / NUMVARS, 1, 1);
-	imageData -> GetPointData() -> SetScalars(floatArray);
+	imageData -> SetExtent(0, histoSize - 1, 0, histoSize - 1, 0, 0);
+	//imageData -> GetPointData() -> SetScalars(floatArray);
+	vtkInformation * vtkInfo = vtkInformation::New();
+	imageData ->AllocateScalars(vtkInfo);
 
+	std::vector<int> renderedHistogram(histoSize * histoSize);
+	for (int i = 0; i < renderedHistogram.size(); i++)
+	{
+		renderedHistogram[i] = 0;
+	}
+
+	double * dataPtr = (double *) imageData ->GetScalarPointer(0,0,0);
+	
+	int var1 = 1;  //1st column (var) on which to build a VTK histogram
+	int var2 = 5;  //2nd column (var) on which to build a VTK histogram
+	
+	for (int i = 0; i < numRows; i++)
+	{
+		//h_data - CPU calculated histogram - access element # i * NUMVARS + j
+		//h_data2 - CPU calculated count for a row - access element # i
+		//renderedHistogram - what we're building to give to VTK - access which element: row # value in col 0; col# value in col 1 - for this row
+		renderedHistogram[h_data[i * NUMVARS + var1] * histoSize + h_data[i * NUMVARS + var2]] += h_data2[i];
+		
+	}
+
+	#ifdef PRINT_RESULT
+	cout << "'Full' histogram for VTK to render:" << endl;
+	for (int i = 0; i < histoSize; i++)
+	{
+		for (int j = 0; j < histoSize; j++)
+		{
+			cout << setw(10) << renderedHistogram[i * histoSize + j] << " ";
+		}
+		cout << endl;
+	}
+	#endif
+
+	/*
 	vtkChartHistogram2D * chart = vtkChartHistogram2D::New();
 	chart ->SetInputData(imageData);
 	chart ->SetRenderEmpty(true);
+
+	//chart ->SetAutoAxes(false);
+	//chart ->GetAxis(vtkAxis::BOTTOM) -> SetRange(1, 10);
+	//chart ->GetAxis(vtkAxis::BOTTOM) -> SetTitle("Bottom");
+	//chart ->GetAxis(vtkAxis::LEFT) -> SetRange(1, 10);
+	//chart ->GetAxis(vtkAxis::LEFT) -> SetTitle("Left");
+	//chart ->GetAxis(vtkAxis::FIXED) -> SetRange(1, 10);
+
 
 	
 	
 	//Based on: https://github.com/qsnake/vtk/blob/master/Charts/Testing/Cxx/TestHistogram2D.cxx
 	vtkColorTransferFunction * colorFunction = vtkColorTransferFunction::New();
 
-	colorFunction -> AddRGBSegment(0.0f, 0.0, 1.0, 0.0, 4.0, 0.0f, 0.0f, 1.0f);
+	colorFunction -> AddRGBSegment(0.0f, 0.0, 1.0, 0.0, 100.0, 0.0f, 0.0f, 1.0f);
 
 	colorFunction -> Build();
 
@@ -164,7 +216,7 @@ int main(int argc, char *argv[])
 
 	view ->GetInteractor() -> Initialize();
 	view ->GetInteractor() -> Start();
-
+	*/
 	
 	fclose(inFile);
 

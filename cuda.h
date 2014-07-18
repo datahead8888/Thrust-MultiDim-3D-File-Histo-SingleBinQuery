@@ -23,7 +23,7 @@ std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, th
 void printHistoData(int rows, int cols, int printWidth, thrust::host_vector<int> & multiDimKeys, thrust::host_vector<int> & counts);
 
 //#define PRINT_INPUT 1
-#define IS_LOGGING 1
+//#define IS_LOGGING 1
 #define PRINT_RESULT 1
 
 typedef thrust::tuple<int, int, int> Int3;
