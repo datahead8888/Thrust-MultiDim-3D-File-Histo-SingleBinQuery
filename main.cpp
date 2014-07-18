@@ -135,17 +135,7 @@ int main(int argc, char *argv[])
 	#endif
 	
 	
-	//////Render a histogram in VTK
-	
-	//vtkFloatArray * floatArray = vtkFloatArray::New();
-	//floatArray ->SetNumberOfComponents(2);
-	//for (int i = 0; i < h_data.size() / NUMVARS; i++)
-	//{
-	//	//floatArray -> InsertNextTuple3(h_data[i * NUMVARS], h_data[i * NUMVARS + 1], h_data[i * NUMVARS + 2]);
-	//	floatArray -> InsertNextTuple2(h_data[i * NUMVARS], h_data[i * NUMVARS + 1]);
-	//	//floatArray -> InsertNextTuple3(0.0, 0.0, 0.0);
-	//}
-	
+	//////Render a histogram in VTK	
 	int histoSize = 4;
 
 	//Reference: http://www.vtk.org/pipermail/vtkusers/2002-June/011682.html
@@ -155,8 +145,12 @@ int main(int argc, char *argv[])
 	vtkInformation * vtkInfo = vtkInformation::New();
 	imageData ->AllocateScalars(vtkInfo);
 
-	std::vector<int> renderedHistogram(histoSize * histoSize);
-	for (int i = 0; i < renderedHistogram.size(); i++)
+	double * renderedHistogram = (double*) imageData -> GetScalarPointer(0, 0, 0);
+
+
+
+	//std::vector<int> renderedHistogram(histoSize * histoSize);
+	for (int i = 0; i < histoSize * histoSize; i++)
 	{
 		renderedHistogram[i] = 0;
 	}
@@ -176,8 +170,8 @@ int main(int argc, char *argv[])
 	}
 
 	#ifdef PRINT_RESULT
-	cout << "'Full' histogram for VTK to render:" << endl;
-	for (int i = 0; i < histoSize; i++)
+	cout << "'Full' histogram for VTK to render (flipped to correspond to VTK):" << endl;
+	for (int i = histoSize - 1; i >= 0; i--)
 	{
 		for (int j = 0; j < histoSize; j++)
 		{
@@ -187,10 +181,10 @@ int main(int argc, char *argv[])
 	}
 	#endif
 
-	/*
+	
 	vtkChartHistogram2D * chart = vtkChartHistogram2D::New();
 	chart ->SetInputData(imageData);
-	chart ->SetRenderEmpty(true);
+	//chart ->SetRenderEmpty(true);
 
 	//chart ->SetAutoAxes(false);
 	//chart ->GetAxis(vtkAxis::BOTTOM) -> SetRange(1, 10);
@@ -205,7 +199,7 @@ int main(int argc, char *argv[])
 	//Based on: https://github.com/qsnake/vtk/blob/master/Charts/Testing/Cxx/TestHistogram2D.cxx
 	vtkColorTransferFunction * colorFunction = vtkColorTransferFunction::New();
 
-	colorFunction -> AddRGBSegment(0.0f, 0.0, 1.0, 0.0, 100.0, 0.0f, 0.0f, 1.0f);
+	colorFunction -> AddRGBSegment(0.0f, 0.0, 1.0, 0.0, 824.0, 0.0f, 0.0f, 1.0f);
 
 	colorFunction -> Build();
 
@@ -214,9 +208,10 @@ int main(int argc, char *argv[])
 	vtkContextView * view = vtkContextView::New();
 	view ->GetScene() ->AddItem(chart);
 
+
 	view ->GetInteractor() -> Initialize();
 	view ->GetInteractor() -> Start();
-	*/
+	
 	
 	fclose(inFile);
 
