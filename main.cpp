@@ -56,16 +56,20 @@ int main(int argc, char *argv[])
 	const int ZSIZE = 248;
 	*/
 	
-	//const int XSIZE = 120;
+	//const int XSIZE = 6;
 	const int XSIZE = 10000;
 	//const int XSIZE = 600 * 248 * 248;
 	const int YSIZE = 1;
 	const int ZSIZE = 1;
 	
+	//const int NUMVARS = 4;
 	const int NUMVARS = 10;
 	int rowCount = XSIZE * YSIZE * ZSIZE;
-	int bufferSize = XSIZE / 10;
+	int bufferSize = rowCount / 10;
 	//int bufferSize = 2;
+	int var1 = 1;  //1st column (var) on which to build a VTK histogram
+	int var2 = 5;  //2nd column (var) on which to build a VTK histogram
+	//int var2 = 2;
 
 	thrust::host_vector<float> h_buffer(bufferSize * NUMVARS);
 	thrust::host_vector<int> h_data;
@@ -87,28 +91,13 @@ int main(int argc, char *argv[])
 
 	while (loadTextFile(inFile, XSIZE, YSIZE, ZSIZE, NUMVARS, 10, h_buffer, bufferSize, xPos, yPos, zPos))
 	{
-	
-
-
 		#ifdef IS_LOGGING
 		cout << "Input data:" << endl;
 		printData(h_buffer.size() / NUMVARS, NUMVARS, 10, h_buffer);
 		#endif
 
-
-	
-
-
 		//thrust::host_vector<int> resultVector1 = doHistogramGPU(XSIZE, YSIZE, ZSIZE, NUMVARS, h_buffer);
 		doHistogramGPU(XSIZE, YSIZE, ZSIZE, NUMVARS, h_buffer, h_data, h_data2, NUM_BINS, cudaTimer, cpuTimer);
-
-
-		
-
-		//////std::vector<int> resultVector2 = doHistogramCPU(XSIZE, YSIZE, ZSIZE, NUMVARS, b_data);
-
-		
-
 	}
 
 	#ifdef IS_LOGGING
@@ -140,8 +129,33 @@ int main(int argc, char *argv[])
 	printHistoData(numRows, NUMVARS, 10, h_data, h_data2);
 	#endif
 	
+	fclose(inFile);
+
+	//////CPU Baseline/////////////////////////////////////////
+	//NOTE: Only works for lower number of vars and smaller file record counts - will run out of memory otherwise!
+	///////////////////////////////////////////////////////////
+	#ifdef DO_CPU_COMPUTATION
+
+	FILE *cpuFile;
+	string cpuFileName = "multifield.0001.txt";
+	xPos = yPos = zPos = 0;
+
+	if ( (cpuFile = fopen(cpuFileName.c_str(), "r")) == NULL) 
+	{
+		fprintf(stderr,"Could not open %s for reading\n", cpuFileName.c_str());
+		return -2;
+	}
+
+	h_buffer.resize(XSIZE * YSIZE * ZSIZE * NUMVARS);
+	loadTextFile(cpuFile, XSIZE, YSIZE, ZSIZE, NUMVARS, 10, h_buffer, XSIZE * YSIZE * ZSIZE, xPos, yPos, zPos);
+	doHistogramCPU(XSIZE, YSIZE, ZSIZE, NUMVARS, NUM_BINS, h_buffer);
+
+	fclose(cpuFile);
+
+	#endif
+
 	
-	//////Render a histogram in VTK	
+	//////Render a histogram in VTK///////////////////////////////
 	int histoSize = NUM_BINS;
 
 	//Reference: http://www.vtk.org/pipermail/vtkusers/2002-June/011682.html
@@ -163,8 +177,6 @@ int main(int argc, char *argv[])
 
 	double * dataPtr = (double *) imageData ->GetScalarPointer(0,0,0);
 	
-	int var1 = 1;  //1st column (var) on which to build a VTK histogram
-	int var2 = 5;  //2nd column (var) on which to build a VTK histogram
 
 	for (int i = 0; i < numRows; i++)
 	{
@@ -219,7 +231,7 @@ int main(int argc, char *argv[])
 	view ->GetInteractor() -> Start();
 	
 	
-	fclose(inFile);
+	
 
 
 	return 0;

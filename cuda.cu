@@ -507,7 +507,7 @@ void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vecto
 	cout << "CPU time elapsed for GPU map reduce: " << cpuTimer.getTimeElapsed() << endl;
 }
 
-std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<float> & h_data)
+void doHistogramCPU(int xSize, int ySize, int zSize, int numVars, int numBins, thrust::host_vector<float> & h_data)
 {		
 	//Reference: http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
 	//Timing code start
@@ -531,7 +531,7 @@ std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, th
 	int numElements = 1;
 	for (int i = 0; i < numVars; i++)
 	{
-		numElements *= 4; //numBins!
+		numElements *= numBins;
 	}
 
 
@@ -557,16 +557,24 @@ std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, th
 			float percentage = (value - min) / float(max - min);
 
 
-			int binValue = percentage * 4;
+			int binValue = percentage * numBins;
 
-			if (binValue == 4) //numBins!
+			if (binValue == numBins) 
 			{
 				binValue--;
 			}
 
 			sum += binValue * factor;
 
-			factor *= 4;
+			factor *= numBins;
+
+			#ifdef IS_LOGGING
+			cout << "Value: " << value << endl;
+			cout << "Min was: " << min << endl;
+			cout << "Max was: " << max << endl;
+			cout << "Bin chosen: " << binValue << endl;
+			cout << "Percentage: " << percentage << endl;
+			#endif
 
 		}
 
@@ -576,8 +584,8 @@ std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, th
 	//Timing code end
 	cpuTimer.stopTimer();
 
-	#ifdef IS_LOGGING
-	cout << "Generated histogram:" << endl;
+	#ifdef PRINT_RESULT
+	cout << "Generated histogram on the CPU:" << endl;
 	//printData(finalCounts.size(), 10, thrust::host_vector<int>(finalCounts.begin(), finalCounts.end()));
 
 	printDataNoZeroes(finalCounts.size(), 10, thrust::host_vector<int>(finalCounts.begin(), finalCounts.end()));
@@ -590,7 +598,6 @@ std::vector<int> doHistogramCPU(int xSize, int ySize, int zSize, int numVars, th
 
 	cout << "CPU time elapsed for CPU method: " << cpuTimer.getTimeElapsed() << endl;
 
-	return finalCounts;
 
 }
 
