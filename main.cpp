@@ -56,6 +56,7 @@ int main(int argc, char *argv[])
 	const int ZSIZE = 248;
 	*/
 	
+	//const int XSIZE = 120;
 	const int XSIZE = 10000;
 	//const int XSIZE = 600 * 248 * 248;
 	const int YSIZE = 1;
@@ -64,6 +65,7 @@ int main(int argc, char *argv[])
 	const int NUMVARS = 10;
 	int rowCount = XSIZE * YSIZE * ZSIZE;
 	int bufferSize = XSIZE / 10;
+	//int bufferSize = 2;
 
 	thrust::host_vector<float> h_buffer(bufferSize * NUMVARS);
 	thrust::host_vector<int> h_data;
@@ -83,7 +85,7 @@ int main(int argc, char *argv[])
 	CudaTimer cudaTimer;
 	WindowsCpuTimer cpuTimer;
 
-	while (loadTextFile(inFile, XSIZE, YSIZE, ZSIZE, NUMVARS, h_buffer, bufferSize, xPos, yPos, zPos))
+	while (loadTextFile(inFile, XSIZE, YSIZE, ZSIZE, NUMVARS, 10, h_buffer, bufferSize, xPos, yPos, zPos))
 	{
 	
 
@@ -163,7 +165,7 @@ int main(int argc, char *argv[])
 	
 	int var1 = 1;  //1st column (var) on which to build a VTK histogram
 	int var2 = 5;  //2nd column (var) on which to build a VTK histogram
-	
+
 	for (int i = 0; i < numRows; i++)
 	{
 		//h_data - CPU calculated histogram - access element # i * NUMVARS + j

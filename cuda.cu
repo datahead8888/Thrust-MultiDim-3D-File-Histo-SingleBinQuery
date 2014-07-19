@@ -24,7 +24,7 @@
 using namespace std;
 
 
-bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_data, int bufferSize, int & xPos, int & yPos, int & zPos )
+bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, int maxVars, thrust::host_vector<float> & h_data, int bufferSize, int & xPos, int & yPos, int & zPos )
 {
 
 	WindowsCpuTimer cpuTimer;
@@ -49,13 +49,6 @@ bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, th
 				bool hadEOF = false;
 				for (int v = 0; v < numvars; v++)
 				{
-					/*
-					inFile >> density >> temperature >> ab_H >> ab_HP >> ab_He >> ab_HeP >> ab_HePP >> ab_HM >> ab_H2 >> ab_H2P;
-					#ifdef PRINT_INPUT
-					cout << "x = " << x << " y = " << y << " z = " << z << endl;
-					cout << "Density: " << density << " Temperature: " << temperature << " ab_H " << ab_H << " ab_HP " << ab_HP << " ab_He " << ab_He << " ab_HeP " << ab_HeP << " ab_HEPP " << ab_HePP << " ab_HM " << ab_HM << " ab_H2 "<< ab_H2 << " ab_H2P " << ab_H2P << endl;
-					#endif
-					*/
 
 					fscanf(infile, "%f", &currentValue);
 
@@ -74,6 +67,24 @@ bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, th
 					h_data[recordsRead * numvars + v] = currentValue;
 
 				} //END: for (int v = 0; v < numvars && keepGoing; v++)
+
+				
+				//If less variables are requested than are in the file (currently 10), burn through variables until we get to the next record
+				if (!hadEOF && numvars < maxVars)
+				{
+					for (int v = 0; v < maxVars - numvars; v++)
+					{
+						fscanf(infile, "%f", &currentValue);
+
+						if (feof(infile))
+						{
+							hadEOF = true;
+							break;
+						}
+
+
+					}
+				} //END: if (!hadEOF && numvars < maxVars)
 
 				recordsRead++;
 
