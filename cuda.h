@@ -101,7 +101,7 @@ struct MultiToSingleDim
 		this -> numBins = numBins;
 	}
 
-	//This kernel assigns each element to a bin group
+	//This kernel converts the multidimensional bin representation to a single dimensional representation
 	template <typename Tuple>
 	__device__ void operator()( Tuple param) 
 	{
@@ -113,7 +113,6 @@ struct MultiToSingleDim
 		for (int j = cols - 1; j >= 0; j--)
 		{
 			newValue += (rawVector[singleDimIndex * cols + j]) * factor;
-			//newValue = (rawVector[singleDimIndex * cols + j]) * factor;
 
 			factor *= numBins;
 
@@ -122,16 +121,11 @@ struct MultiToSingleDim
 
 
 		thrust::get<2>(param) = newValue;
-		//thrust::get<2>(param) = 22147483647;
-		//singleDimResult[singleDimIndex] = 22147483647;
-		//singleDimResult[singleDimIndex] = newValue;
-		//singleDimResult[singleDimIndex] = sizeof(long long);
 		
 	}
 	
 };
 
-//TO DO: Port this
 struct SingleToMultiDim
 {
 	int * rawVector;
@@ -144,6 +138,7 @@ struct SingleToMultiDim
 		this -> numBins = numBins;
 	}
 
+	//This kernel converts a single dimensional bin representation back to a multidimensional representation
 	template <typename Tuple>
 	__device__ void operator()( Tuple param) 
 	{
@@ -155,7 +150,6 @@ struct SingleToMultiDim
 		
 		for (int j = cols - 1; j >= 0; j--)
 		{
-			//newValue += (rawVector[singleDimIndex * cols + j] - 1) * factor;
 			int moddedValue = dataValue % numBins;
 			rawVector[singleDimIndex * cols + j] = moddedValue;
 			dataValue /= numBins;
@@ -163,22 +157,6 @@ struct SingleToMultiDim
 
 		}
 
-		/*
-		//Multidimensional representation reconstruction - CPU
-	int i = 0;
-	for (DVI it = d_single_data.begin(); it != endPosition.first; it++, i++)
-	{
-		int value = *it;
-
-		for (int j = COLS - 1; j >= 0; j--)
-		{
-			int moddedValue = value % 4 + 1;
-			final_data[i * COLS + j] = moddedValue;
-			value /= 4;
-
-		}
-	}
-	*/
 		
 	}
 	
