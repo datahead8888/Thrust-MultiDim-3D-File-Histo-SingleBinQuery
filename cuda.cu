@@ -533,13 +533,13 @@ void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_v
 
 //h_data - the keys
 //h_data2 - the counts
-void histogramMapReduceGPU(thrust::host_vector<long long> & h_data, thrust::host_vector<long long> & h_data2, thrust::pair<DVI, DVI> & endPosition, int numVars, int numBins, CudaTimer & cudaTimer, WindowsCpuTimer & cpuTimer)
+void histogramMapReduceGPU(thrust::host_vector<long long> & h_data, thrust::host_vector<long long> & h_data2, thrust::pair<DVL, DVL> & endPosition, int numVars, int numBins, CudaTimer & cudaTimer, WindowsCpuTimer & cpuTimer)
 {
 	cudaTimer.startTimer();
 	cpuTimer.startTimer();
 	
-	thrust::device_vector<int> d_data(h_data.begin(), h_data.end());
-	thrust::device_vector<int> d_data2(h_data2.begin(), h_data2.end());
+	thrust::device_vector<long long> d_data(h_data.begin(), h_data.end());
+	thrust::device_vector<long long> d_data2(h_data2.begin(), h_data2.end());
 
 	
 	thrust::sort_by_key(d_data.begin(), d_data.end(), d_data2.begin());
@@ -551,7 +551,7 @@ void histogramMapReduceGPU(thrust::host_vector<long long> & h_data, thrust::host
 	cout << "Did final map reduce..." << endl;
 	cout << "GPU Keys:" << endl;                               //The new "d_single_data"
 
-	for (DVI it = d_data.begin(); it != endPosition.first; it++)
+	for (DVL it = d_data.begin(); it != endPosition.first; it++)
 	{
 		cout << setw(4) << *it << " ";
 	}
@@ -560,7 +560,7 @@ void histogramMapReduceGPU(thrust::host_vector<long long> & h_data, thrust::host
 
 	cout << "GPU Counts:" << endl;
 
-	for (DVI it = d_data2.begin(); it != endPosition.second; it++)
+	for (DVL it = d_data2.begin(); it != endPosition.second; it++)
 	{
 		cout << setw(4) << *it << " ";
 	}
@@ -568,7 +568,7 @@ void histogramMapReduceGPU(thrust::host_vector<long long> & h_data, thrust::host
 	cout << endl;
 	#endif
 	
-	int d_data_size = endPosition.first - d_data.begin();
+	long long d_data_size = endPosition.first - d_data.begin();
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////Multidimensional representation construction - GPU...
@@ -579,8 +579,8 @@ void histogramMapReduceGPU(thrust::host_vector<long long> & h_data, thrust::host
 	auto zipEnd = thrust::make_zip_iterator(thrust::make_tuple(counter + d_data_size, colCountIt + d_data_size, endPosition.first));
 
 
-	thrust::device_vector<int> d_final_data (d_data_size * numVars);
-	thrust::device_ptr<int> devPtr = &d_final_data[0];
+	thrust::device_vector<long long> d_final_data (d_data_size * numVars);
+	thrust::device_ptr<long long> devPtr = &d_final_data[0];
 	
 	////Note: We can use the same zipStart and zipEnd iterators as before; we just use a different kernel and a different raw data pointer
 	thrust::for_each(zipStart, zipEnd, SingleToMultiDim(thrust::raw_pointer_cast(devPtr), numBins));

@@ -50,14 +50,13 @@ int main(int argc, char *argv[])
 	const int NUM_BINS = 10;
 	
 	
-	/*
-	const int XSIZE = 600;
-	const int YSIZE = 248;
-	const int ZSIZE = 248;
-	*/
 	
-	//const int XSIZE = 6;
-	const int XSIZE = 90;
+	//const int XSIZE = 600;
+	//const int YSIZE = 248;
+	//const int ZSIZE = 248;
+	
+	const int XSIZE = 100;
+	//const int XSIZE = 90;
 	//const int XSIZE = 600 * 248 * 248;
 	const int YSIZE = 1;
 	const int ZSIZE = 1;
@@ -65,11 +64,11 @@ int main(int argc, char *argv[])
 	//const int NUMVARS = 4;
 	const int NUMVARS = 10;
 	int rowCount = XSIZE * YSIZE * ZSIZE;
-	int bufferSize = XSIZE / 10;
-	//int bufferSize = 2;
+	int bufferSize = rowCount / 10;
+	//int bufferSize = 5;
 	int var1 = 1;  //1st column (var) on which to build a VTK histogram
-	//int var2 = 5;  //2nd column (var) on which to build a VTK histogram
-	int var2 = 2;
+	int var2 = 5;  //2nd column (var) on which to build a VTK histogram
+	//int var2 = 2;
 	string fileName = "multifield.0001.txt";
 
 	//printMinMaxes(fileName, XSIZE * YSIZE * ZSIZE, 10);
@@ -91,6 +90,11 @@ int main(int argc, char *argv[])
 
 	CudaTimer cudaTimer;
 	WindowsCpuTimer cpuTimer;
+
+	//for (int i = 0; i < 9; i++)
+	//{
+	//	loadTextFile(inFile, XSIZE, YSIZE, ZSIZE, NUMVARS, 10, h_buffer, bufferSize, xPos, yPos, zPos);
+	//}
 
 	while (loadTextFile(inFile, XSIZE, YSIZE, ZSIZE, NUMVARS, 10, h_buffer, bufferSize, xPos, yPos, zPos))
 	{
@@ -122,7 +126,7 @@ int main(int argc, char *argv[])
 	#endif
 
 
-	thrust::pair<DVI, DVI> endPosition;
+	thrust::pair<DVL, DVL> endPosition;
 	histogramMapReduceGPU(h_data, h_data2, endPosition, NUMVARS, NUM_BINS, cudaTimer, cpuTimer);
 
 	int numRows = h_data.size() / NUMVARS;

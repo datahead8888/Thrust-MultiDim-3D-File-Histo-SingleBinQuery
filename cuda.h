@@ -2,7 +2,7 @@
 #define CUDA_H
 
 //#define PRINT_INPUT 1		//If true prints the input used on the screen
-#define IS_LOGGING 1		//If true does logging for detailed statements
+//#define IS_LOGGING 1		//If true does logging for detailed statements
 #define PRINT_RESULT 1		//If true will print final results
 //#define DO_CPU_COMPUTATION  //If true will calculate the histogram on the CPU
 
@@ -26,7 +26,7 @@ void printData(int rows, int cols, int printWidth, thrust::host_vector<float> & 
 bool generateRandomData(int rows, int cols, int max, thrust::host_vector<int> & data);
 bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, int maxVars, thrust::host_vector<float> & h_data, int bufferSize, int & xPos, int & yPos, int & zPos);
 void doHistogramGPU(int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_buffer, thrust::host_vector<long long> & h_data, thrust::host_vector<long long> & h_data2, int numBins, CudaTimer & cudaTimer, WindowsCpuTimer & cpuTimer);
-void histogramMapReduceGPU(thrust::host_vector<long long> & h_data, thrust::host_vector<long long> & h_data2, thrust::pair<DVI, DVI> & endPosition, int numVars, int numBins, CudaTimer & cudaTimer, WindowsCpuTimer & cpuTimer);
+void histogramMapReduceGPU(thrust::host_vector<long long> & h_data, thrust::host_vector<long long> & h_data2, thrust::pair<DVL, DVL> & endPosition, int numVars, int numBins, CudaTimer & cudaTimer, WindowsCpuTimer & cpuTimer);
 void doHistogramCPU(int xSize, int ySize, int zSize, int numVars, int numBins, thrust::host_vector<float> & h_data);
 void printHistoData(int rows, int cols, int printWidth, thrust::host_vector<long long> & multiDimKeys, thrust::host_vector<long long> & counts);
 int printMinMaxes(string & fileName, int numRecords, int numvars);
@@ -128,11 +128,11 @@ struct MultiToSingleDim
 
 struct SingleToMultiDim
 {
-	int * rawVector;
+	long long * rawVector;
 	int numBins;
 
 	
-	SingleToMultiDim(int * rawVector, int numBins)
+	SingleToMultiDim(long long * rawVector, int numBins)
 	{
 		this -> rawVector = rawVector;
 		this -> numBins = numBins;
@@ -146,7 +146,7 @@ struct SingleToMultiDim
 
 		int singleDimIndex = thrust::get<0>(param);
 		int cols = thrust::get<1>(param);
-		int dataValue = thrust::get<2>(param);
+		long long dataValue = thrust::get<2>(param);
 		
 		for (int j = cols - 1; j >= 0; j--)
 		{
