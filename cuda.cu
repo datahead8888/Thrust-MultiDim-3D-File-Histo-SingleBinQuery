@@ -24,6 +24,77 @@
 using namespace std;
 
 
+
+int printMinMaxes(string & fileName, int numRecords, int numvars)
+{
+	FILE *inFile;
+	if ( (inFile = fopen(fileName.c_str(), "r")) == NULL) 
+	{
+		fprintf(stderr,"Could not open %s for reading\n", fileName.c_str());
+		return -2;
+	}
+
+	float minValues[10];
+	float maxValues[10];
+	float currentValue = 0;
+
+
+	for (int j = 0; j < numvars; j++)
+	{
+		fscanf(inFile, "%f", &currentValue);
+
+		minValues[j] = maxValues[j] = currentValue;
+	}
+
+	for (int i = 1; i < numRecords; i++)
+	{
+		for (int j = 0; j < numvars; j++)
+		{
+			fscanf(inFile, "%f", &currentValue);
+			if (currentValue < minValues[j])
+			{
+				minValues[j] = currentValue;
+			}
+			if (currentValue > maxValues[j])
+			{
+				maxValues[j] = currentValue;
+			}
+
+		}
+	}
+
+	//Old values:
+	//float minValues[] = {0, 0, 0, 0, 0, 0, 7.392e-039, 0, 0, 0};
+	//float maxValues[] = {1001, 19910, 0.7599, 0.7595, 0.24, 0.2397, 0.1623, 1.1e-007, 3.464e-006, 4.447e-008};
+
+	//New values:
+	//Min values:
+	//579.8 72.16 0.000385 7.576e-005 6.954e-005 0 0 2.602e-012 1.946e-013 7.393e-015
+
+	//Max values:
+	//1053 22150 0.7599 0.7596 0.24 0.2398 0.1623 1.167e-007 4.518e-006 5.322e-008
+	cout << "Finished reading the file:" << endl;
+	cout << "Min values:" << endl;
+	for (int i = 0; i < numvars; i++)
+	{
+		cout << minValues[i] << " ";
+	}
+	cout << endl;
+
+	cout << "Max values:" << endl;
+	for (int i = 0; i < numvars; i++)
+	{
+		cout << maxValues[i] << " ";
+	}
+	cout << endl;
+
+	fclose(inFile);
+
+	return 0;
+
+}
+
+
 bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, int maxVars, thrust::host_vector<float> & h_data, int bufferSize, int & xPos, int & yPos, int & zPos )
 {
 
@@ -31,7 +102,8 @@ bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, in
 
 	cpuTimer.startTimer();
 
-	
+	float minValues[] = {579.8, 72.16, 0.000385, 7.576e-005, 6.954e-005, 0, 0, 2.602e-012, 1.946e-013, 7.393e-015};
+	float maxValues[] = {1053, 22150, 0.7599, 0.7596, 0.24, 0.2398, 0.1623, 1.167e-007, 4.518e-006, 5.322e-008};
 	
 	
 	//Data from http://sciviscontest.ieeevis.org/2008/data.html
@@ -65,6 +137,15 @@ bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, in
 					#endif
 
 					h_data[recordsRead * numvars + v] = currentValue;
+
+					//if (currentValue < minValues[v])
+					//{
+					//	cout << "Min violator found!" << endl;
+					//}
+					//if (currentValue > maxValues[v])
+					//{
+					//	cout << "Max violator found!" << endl;
+					//}
 
 				} //END: for (int v = 0; v < numvars && keepGoing; v++)
 
@@ -206,6 +287,16 @@ void printData(int rows, int printWidth, thrust::device_vector<int> & data)
 
 }
 
+void printData(int rows, int printWidth, thrust::device_vector<long long> & data)
+{
+	for (int i = 0; i < rows; i++)
+	{
+		cout << setw(printWidth) << data[i] << endl;
+	
+	}
+
+}
+
 void printData(int rows, int cols, int printWidth, thrust::host_vector<int> & data)
 {
 	for (int i = 0; i < rows; i++)
@@ -262,7 +353,7 @@ void printData(int rows, int cols, int printWidth, thrust::host_vector<float> & 
 
 }
 
-void printHistoData(int rows, int cols, int printWidth, thrust::host_vector<int> & multiDimKeys, thrust::host_vector<int> & counts)
+void printHistoData(int rows, int cols, int printWidth, thrust::host_vector<long long> & multiDimKeys, thrust::host_vector<long long> & counts)
 {
 	for (int i = 0; i < rows; i++)
 	{
@@ -279,7 +370,7 @@ void printHistoData(int rows, int cols, int printWidth, thrust::host_vector<int>
 
 }
 
-void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<float> & h_buffer, thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, int numBins, CudaTimer & cudaTimer, WindowsCpuTimer & cpuTimer)
+void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<float> & h_buffer, thrust::host_vector<long long> & h_data, thrust::host_vector<long long> & h_data2, int numBins, CudaTimer & cudaTimer, WindowsCpuTimer & cpuTimer)
 {
 	
 	thrust::device_vector<float>d_data(h_buffer.begin(), h_buffer.end());
@@ -288,7 +379,7 @@ void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_v
 	auto zipInFirst = thrust::make_zip_iterator(thrust::make_tuple(d_data.begin()));
 	auto zipInLast = thrust::make_zip_iterator(thrust::make_tuple(d_data.end()));
 	auto zipOutFirst = thrust::make_zip_iterator(thrust::make_tuple(d_bins.begin()));
-	thrust::counting_iterator<int> counter(0);
+	thrust::counting_iterator<long long> counter(0);
 	
 	
 	
@@ -313,8 +404,8 @@ void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_v
 	
 	//Phase 1: Find the bins for each of the elements
 	
-	float minValues[] = {0, 0, 0, 0, 0, 0, 7.392e-039, 0, 0, 0};
-	float maxValues[] = {1001, 19910, 0.7599, 0.7595, 0.24, 0.2397, 0.1623, 1.1e-007, 3.464e-006, 4.447e-008};
+	float minValues[] = {579.8, 72.16, 0.000385, 7.576e-005, 6.954e-005, 0, 0, 2.602e-012, 1.946e-013, 7.393e-015};
+	float maxValues[] = {1053, 22150, 0.7599, 0.7596, 0.24, 0.2398, 0.1623, 1.167e-007, 4.518e-006, 5.322e-008};
 
 	thrust::device_vector<float> d_minValues(minValues, minValues+10);
 	thrust::device_vector<float> d_maxValues(maxValues, maxValues+10);
@@ -344,7 +435,7 @@ void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_v
 
 	#ifdef IS_LOGGING
 	cout << "Printing bin assignment" << endl;
-	printData(h_buffer.size() / numVars, numVars, 10, d_bins);
+	printData(h_buffer.size() / numVars, numVars, 7, d_bins);
 	#endif
 
 	cout << endl;
@@ -352,9 +443,11 @@ void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_v
 
 	////Phase 2: Convert this effectively multi-dimensional vector into a one dimensional vector
 
-	thrust::device_vector<int> d_single_data(h_buffer.size() / numVars);
+	//This device vector represents the single dimensional representation of the multidimensional vector
+	//NOTE: the long long data type is required if many variables (or many bins) are used in order to prevent overflow!
+	thrust::device_vector<long long> d_single_data(h_buffer.size() / numVars);
 
-	thrust::constant_iterator<int> colCountIt(numVars);
+	thrust::constant_iterator<long long> colCountIt(numVars); //long long for now!
 	//thrust::counting_iterator<int> counter(0);
 	auto zipStart = thrust::make_zip_iterator(thrust::make_tuple(counter, colCountIt, d_single_data.begin()));
 	auto zipEnd = thrust::make_zip_iterator(thrust::make_tuple(counter + d_single_data.size(), colCountIt + d_single_data.size(), d_single_data.end()));
@@ -365,7 +458,7 @@ void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_v
 
 	#ifdef IS_LOGGING	
 	cout << "Printing 1-D representation of data - from GPU - Prelim" << endl;
-	printData(h_buffer.size() / numVars, 10, d_single_data);
+	printData(h_buffer.size() / numVars, 7, d_single_data);
 	#endif
 
 	//cout << endl;
@@ -375,19 +468,19 @@ void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_v
 
 	#ifdef IS_LOGGING	
 	cout << "Printing SORTED 1-D representation of data" << endl;
-	printData(h_buffer.size() / numVars, 10, d_single_data);
+	printData(h_buffer.size() / numVars, 7, d_single_data);
 	#endif
 
 	//////Step 3: Use the reduce by key function to get a count of each bin type
 	thrust::constant_iterator<int> cit(1);
-	thrust::device_vector<int> d_counts(d_single_data.size());  //4 ^ 3
+	thrust::device_vector<long long> d_counts(d_single_data.size());  //4 ^ 3
 
 	//typedef thrust::device_vector<int>::iterator DVI;
 
-	thrust::pair<DVI, DVI> endPosition = thrust::reduce_by_key(d_single_data.begin(), d_single_data.end(), cit, d_single_data.begin(), d_counts.begin());
+	thrust::pair<DVL, DVL> endPosition = thrust::reduce_by_key(d_single_data.begin(), d_single_data.end(), cit, d_single_data.begin(), d_counts.begin());
 
-	int numElements = endPosition.first - d_single_data.begin();
-	
+	long long numElements = endPosition.first - d_single_data.begin();
+
 	#ifdef IS_LOGGING
 
 	cout << "Number of elements from reduce key: " << numElements << endl;
@@ -396,14 +489,14 @@ void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_v
 
 	cout << "Keys (the 1-d representation of data): " << endl;
 
-	for (DVI it = d_single_data.begin(); it != endPosition.first; it++)
+	for (DVL it = d_single_data.begin(); it != endPosition.first; it++)
 	{
 		cout << setw(4) << *it << " ";
 	}
 		
 	cout << endl << "Counts:" << endl;
 
-	for (DVI it = d_counts.begin(); it != endPosition.second; it++)
+	for (DVL it = d_counts.begin(); it != endPosition.second; it++)
 	{
 		cout << setw(4) << *it << " ";
 	}
@@ -440,7 +533,7 @@ void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_v
 
 //h_data - the keys
 //h_data2 - the counts
-void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, thrust::pair<DVI, DVI> & endPosition, int numVars, int numBins, CudaTimer & cudaTimer, WindowsCpuTimer & cpuTimer)
+void histogramMapReduceGPU(thrust::host_vector<long long> & h_data, thrust::host_vector<long long> & h_data2, thrust::pair<DVI, DVI> & endPosition, int numVars, int numBins, CudaTimer & cudaTimer, WindowsCpuTimer & cpuTimer)
 {
 	cudaTimer.startTimer();
 	cpuTimer.startTimer();
@@ -517,8 +610,8 @@ void doHistogramCPU(int xSize, int ySize, int zSize, int numVars, int numBins, t
 	WindowsCpuTimer cpuTimer;
 	cpuTimer.startTimer();
 
-	float minValues[] = {0, 0, 0, 0, 0, 0, 7.392e-039, 0, 0, 0};
-	float maxValues[] = {1001, 19910, 0.7599, 0.7595, 0.24, 0.2397, 0.1623, 1.1e-007, 3.464e-006, 4.447e-008};
+	float minValues[] = {579.8, 72.16, 0.000385, 7.576e-005, 6.954e-005, 0, 0, 2.602e-012, 1.946e-013, 7.393e-015};
+	float maxValues[] = {1053, 22150, 0.7599, 0.7596, 0.24, 0.2398, 0.1623, 1.167e-007, 4.518e-006, 5.322e-008};
 	
 	
 	#ifdef IS_LOGGING

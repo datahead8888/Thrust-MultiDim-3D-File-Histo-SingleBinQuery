@@ -2,7 +2,7 @@
 #define CUDA_H
 
 //#define PRINT_INPUT 1		//If true prints the input used on the screen
-//#define IS_LOGGING 1		//If true does logging for detailed statements
+#define IS_LOGGING 1		//If true does logging for detailed statements
 #define PRINT_RESULT 1		//If true will print final results
 //#define DO_CPU_COMPUTATION  //If true will calculate the histogram on the CPU
 
@@ -16,6 +16,7 @@
 using namespace std;
 
 typedef thrust::device_vector<int>::iterator DVI;
+typedef thrust::device_vector<long long>::iterator DVL;
 
 void printData(int rows, int printWidth, thrust::host_vector<int> & data);
 void printDataNoZeroes(int rows, int printWidth, thrust::host_vector<int> & data);
@@ -24,10 +25,11 @@ void printData(int rows, int cols, int printWidth, thrust::host_vector<int> & da
 void printData(int rows, int cols, int printWidth, thrust::host_vector<float> & data);
 bool generateRandomData(int rows, int cols, int max, thrust::host_vector<int> & data);
 bool loadTextFile(FILE *infile, int xSize, int ySize, int zSize, int numvars, int maxVars, thrust::host_vector<float> & h_data, int bufferSize, int & xPos, int & yPos, int & zPos);
-void doHistogramGPU(int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_buffer, thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, int numBins, CudaTimer & cudaTimer, WindowsCpuTimer & cpuTimer);
-void histogramMapReduceGPU(thrust::host_vector<int> & h_data, thrust::host_vector<int> & h_data2, thrust::pair<DVI, DVI> & endPosition, int numVars, int numBins, CudaTimer & cudaTimer, WindowsCpuTimer & cpuTimer);
+void doHistogramGPU(int xSize, int ySize, int zSize, int numvars, thrust::host_vector<float> & h_buffer, thrust::host_vector<long long> & h_data, thrust::host_vector<long long> & h_data2, int numBins, CudaTimer & cudaTimer, WindowsCpuTimer & cpuTimer);
+void histogramMapReduceGPU(thrust::host_vector<long long> & h_data, thrust::host_vector<long long> & h_data2, thrust::pair<DVI, DVI> & endPosition, int numVars, int numBins, CudaTimer & cudaTimer, WindowsCpuTimer & cpuTimer);
 void doHistogramCPU(int xSize, int ySize, int zSize, int numVars, int numBins, thrust::host_vector<float> & h_data);
-void printHistoData(int rows, int cols, int printWidth, thrust::host_vector<int> & multiDimKeys, thrust::host_vector<int> & counts);
+void printHistoData(int rows, int cols, int printWidth, thrust::host_vector<long long> & multiDimKeys, thrust::host_vector<long long> & counts);
+int printMinMaxes(string & fileName, int numRecords, int numvars);
 
 typedef thrust::tuple<int, int, int> Int3;
 typedef thrust::tuple<int, int> Int2;
@@ -103,17 +105,15 @@ struct MultiToSingleDim
 	template <typename Tuple>
 	__device__ void operator()( Tuple param) 
 	{
-	
-
-		//int data = thrust::get<0>(param);
 		int singleDimIndex = thrust::get<0>(param);
 		int cols = thrust::get<1>(param);
 		
-		int newValue = 0;
-		int factor = 1;
+		long long newValue = 0;
+		long long factor = 1;
 		for (int j = cols - 1; j >= 0; j--)
 		{
 			newValue += (rawVector[singleDimIndex * cols + j]) * factor;
+			//newValue = (rawVector[singleDimIndex * cols + j]) * factor;
 
 			factor *= numBins;
 
@@ -122,6 +122,10 @@ struct MultiToSingleDim
 
 
 		thrust::get<2>(param) = newValue;
+		//thrust::get<2>(param) = 22147483647;
+		//singleDimResult[singleDimIndex] = 22147483647;
+		//singleDimResult[singleDimIndex] = newValue;
+		//singleDimResult[singleDimIndex] = sizeof(long long);
 		
 	}
 	
