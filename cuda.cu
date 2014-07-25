@@ -370,6 +370,7 @@ void printHistoData(int rows, int cols, int printWidth, thrust::host_vector<long
 
 }
 
+//TO DO: Remove h_data2
 void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_vector<float> & h_buffer, thrust::host_vector<long long> & h_data, thrust::host_vector<long long> & h_data2, int numBins, CudaTimer & cudaTimer, WindowsCpuTimer & cpuTimer)
 {
 	
@@ -461,52 +462,50 @@ void doHistogramGPU(int xSize, int ySize, int zSize, int numVars, thrust::host_v
 	printData(h_buffer.size() / numVars, 7, d_single_data);
 	#endif
 
-	//cout << endl;
-	//
 	//////Step 2: Sort those bin ids
-	thrust::sort(d_single_data.begin(), d_single_data.end());
+	//thrust::sort(d_single_data.begin(), d_single_data.end());
 
-	#ifdef IS_LOGGING	
-	cout << "Printing SORTED 1-D representation of data" << endl;
-	printData(h_buffer.size() / numVars, 7, d_single_data);
-	#endif
+	//#ifdef IS_LOGGING	
+	//cout << "Printing SORTED 1-D representation of data" << endl;
+	//printData(h_buffer.size() / numVars, 7, d_single_data);
+	//#endif
 
 	//////Step 3: Use the reduce by key function to get a count of each bin type
-	thrust::constant_iterator<int> cit(1);
-	thrust::device_vector<long long> d_counts(d_single_data.size());  //4 ^ 3
+	//thrust::constant_iterator<int> cit(1);
+	//thrust::device_vector<long long> d_counts(d_single_data.size());  //4 ^ 3
 
 	//typedef thrust::device_vector<int>::iterator DVI;
 
-	thrust::pair<DVL, DVL> endPosition = thrust::reduce_by_key(d_single_data.begin(), d_single_data.end(), cit, d_single_data.begin(), d_counts.begin());
+	//thrust::pair<DVL, DVL> endPosition = thrust::reduce_by_key(d_single_data.begin(), d_single_data.end(), cit, d_single_data.begin(), d_counts.begin());
 
-	long long numElements = endPosition.first - d_single_data.begin();
+	//long long numElements = endPosition.first - d_single_data.begin();
 
-	#ifdef IS_LOGGING
+	//#ifdef IS_LOGGING
 
-	cout << "Number of elements from reduce key: " << numElements << endl;
+	//cout << "Number of elements from reduce key: " << numElements << endl;
 	
-	cout << "Results after reduce key: " << endl;
+	//cout << "Results after reduce key: " << endl;
 
-	cout << "Keys (the 1-d representation of data): " << endl;
+	//cout << "Keys (the 1-d representation of data): " << endl;
 
-	for (DVL it = d_single_data.begin(); it != endPosition.first; it++)
-	{
-		cout << setw(4) << *it << " ";
-	}
+	//for (DVL it = d_single_data.begin(); it != endPosition.first; it++)
+	//{
+	//	cout << setw(4) << *it << " ";
+	//}
 		
-	cout << endl << "Counts:" << endl;
+	//cout << endl << "Counts:" << endl;
 
-	for (DVL it = d_counts.begin(); it != endPosition.second; it++)
-	{
-		cout << setw(4) << *it << " ";
-	}
+	//for (DVL it = d_counts.begin(); it != endPosition.second; it++)
+	//{
+	//	cout << setw(4) << *it << " ";
+	//}
 	
-	cout << endl;
-	cout << endl;
-	#endif
+	//cout << endl;
+	//cout << endl;
+	//#endif
 	
-	h_data.insert(h_data.begin(), d_single_data.begin(), endPosition.first);
-	h_data2.insert(h_data2.begin(), d_counts.begin(), endPosition.second);
+	h_data.insert(h_data.begin(), d_single_data.begin(), d_single_data.end());
+	//h_data2.insert(h_data2.begin(), d_counts.begin(), endPosition.second);
 	
 	
 	
@@ -539,12 +538,16 @@ void histogramMapReduceGPU(thrust::host_vector<long long> & h_data, thrust::host
 	cpuTimer.startTimer();
 	
 	thrust::device_vector<long long> d_data(h_data.begin(), h_data.end());
-	thrust::device_vector<long long> d_data2(h_data2.begin(), h_data2.end());
+	thrust::device_vector<long long> d_data2(h_data.size());
 
 	
-	thrust::sort_by_key(d_data.begin(), d_data.end(), d_data2.begin());
+	//thrust::sort_by_key(d_data.begin(), d_data.end(), d_data2.begin());
+	thrust::sort(d_data.begin(), d_data.end());
 
-	endPosition = thrust::reduce_by_key(d_data.begin(), d_data.end(), d_data2.begin(), d_data.begin(), d_data2.begin());
+	thrust::constant_iterator<int> cit(1);
+
+
+	endPosition = thrust::reduce_by_key(d_data.begin(), d_data.end(), cit, d_data.begin(), d_data2.begin());
 
 	#ifdef IS_LOGGING
 

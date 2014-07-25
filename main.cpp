@@ -55,20 +55,20 @@ int main(int argc, char *argv[])
 	//const int YSIZE = 248;
 	//const int ZSIZE = 248;
 	
-	const int XSIZE = 100;
+	//const int XSIZE = 10;
 	//const int XSIZE = 90;
-	//const int XSIZE = 600 * 248 * 248;
+	const int XSIZE = 600 * 248 * 248;
 	const int YSIZE = 1;
 	const int ZSIZE = 1;
-	
-	//const int NUMVARS = 4;
+
 	const int NUMVARS = 10;
+	//const int NUMVARS = 10;
 	int rowCount = XSIZE * YSIZE * ZSIZE;
 	int bufferSize = rowCount / 10;
 	//int bufferSize = 5;
 	int var1 = 1;  //1st column (var) on which to build a VTK histogram
-	int var2 = 5;  //2nd column (var) on which to build a VTK histogram
-	//int var2 = 2;
+	//int var2 = 5;  //2nd column (var) on which to build a VTK histogram
+	int var2 = 2;
 	string fileName = "multifield.0001.txt";
 
 	//printMinMaxes(fileName, XSIZE * YSIZE * ZSIZE, 10);
@@ -117,12 +117,12 @@ int main(int argc, char *argv[])
 	cout << endl;
 
 	
-	cout << "GPU Counts:" << endl;
-	for (int i = 0; i < h_data2.size(); i++)
-	{
-		cout << h_data2[i] << " ";
-	}
-	cout << endl;
+	//cout << "GPU Counts:" << endl;
+	//for (int i = 0; i < h_data2.size(); i++)
+	//{
+	//	cout << h_data2[i] << " ";
+	//}
+	//cout << endl;
 	#endif
 
 
