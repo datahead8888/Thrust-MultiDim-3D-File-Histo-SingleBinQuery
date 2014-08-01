@@ -603,6 +603,117 @@ void histogramMapReduceGPU(thrust::host_vector<long long> & h_data, thrust::host
 	cout << "CPU time elapsed for GPU map reduce: " << cpuTimer.getTimeElapsed() << endl;
 }
 
+void doQuery(int xSize, int ySize, int zSize, int xMin, int xMax, int yMin, int yMax, int zMin, int zMax, thrust::host_vector<long long> & h_data, thrust::host_vector<long long> & h_data2)
+{
+	CudaTimer cudaTimer;
+	WindowsCpuTimer cpuTimer;
+
+	cudaTimer.startTimer();
+	cpuTimer.startTimer();
+
+
+	thrust::device_vector<long long> d_data(h_data.begin(), h_data.end());
+	thrust::device_vector<long long> temp(d_data.size());
+
+	thrust::counting_iterator<long long> counter(0);
+
+	thrust::transform(counter, counter + d_data.size(), temp.begin(), QueryRange(xSize, ySize, zSize, xMin, xMax, yMin, yMax, zMin, zMax));
+
+	//thrust::transform(zipInFirst, zipInLast, counter, zipOutFirst, BinFinder(thrust::raw_pointer_cast(minDevPtr), thrust::raw_pointer_cast(maxDevPtr), numVars, numBins));
+
+
+	#ifdef IS_LOGGING
+	cout << "-----------------------------------------------------------------------------" << endl;
+	cout << "DoQuery: After query 1/0 assignment:" << endl;
+
+	cout << "Data elements:" << endl;
+	for (int i = 0; i < d_data.size(); i++)
+	{
+		cout << d_data[i] << " ";
+	}
+
+	cout << endl;
+
+	cout << "1/0 elements (to be keys in next step:" << endl;
+	for (int i = 0; i < temp.size(); i++)
+	{
+		cout << temp[i] << " ";
+	}
+	#endif
+
+	thrust::sort_by_key(temp.begin(), temp.end(), d_data.begin(), thrust::greater<int>());
+
+	#ifdef IS_LOGGING
+	cout << "-----------------------------------------------------------------------------" << endl;
+	cout << "DoQuery: After sort by key:" << endl;
+
+	cout << "Data elements:" << endl;
+	for (int i = 0; i < d_data.size(); i++)
+	{
+		cout << d_data[i] << " ";
+	}
+	
+	cout << endl;
+
+	cout << "Keys: " << endl;
+	for (int i = 0; i < temp.size(); i++)
+	{
+		cout << temp[i] << " ";
+	}
+
+	#endif
+
+	int size = thrust::count(temp.begin(), temp.end(), 1);
+
+	#ifdef IS_LOGGING
+	
+	cout << endl;
+	cout << "Number of elements with a value of 1: " << size << endl;
+
+	#endif
+
+	//We won't be needing the 1's and 0's in temp anymore, so why not just resize it and use it as the new device vector for our queried result?
+	temp.resize(size);
+
+
+	///////////////Query "compaction"/////////
+
+	//thrust::counting_iterator<int> counter(0);
+		
+	auto zipStart = thrust::make_zip_iterator(thrust::make_tuple(counter, d_data.begin()));
+	auto zipEnd = thrust::make_zip_iterator(thrust::make_tuple(counter + size, d_data.begin() + size));
+
+
+	//thrust::device_vector<long long> d_final_data (d_data_size * numVars);
+	thrust::device_ptr<long long> tempPtr = &temp[0];
+	
+	////Note: We can use the same zipStart and zipEnd iterators as before; we just use a different kernel and a different raw data pointer
+	thrust::for_each(zipStart, zipEnd, StoreQuery(thrust::raw_pointer_cast(tempPtr)));
+
+	h_data2.clear();
+	h_data2.insert(h_data2.end(), temp.begin(), temp.end());
+
+	cudaTimer.stopTimer();
+	cpuTimer.stopTimer();
+
+	#ifdef IS_LOGGING
+	cout << "-----------------------------------------------------------------------------" << endl;
+	cout << "DoQuery: After the final foreach - 'compacting' it" << endl;
+
+	cout << "Data elements:" << endl;
+	for (int i = 0; i < h_data2.size(); i++)
+	{
+		cout << h_data2[i] << " ";
+	}
+	
+	cout << endl;
+
+	#endif
+
+	cout << "DoQuery: CPU Time Elapsed: " << cpuTimer.getTimeElapsed() << endl;
+	cout << "DoQuery: GPU Time Elapsed: " << cudaTimer.getTimeElapsed() << endl;
+}
+
 void doHistogramCPU(int xSize, int ySize, int zSize, int numVars, int numBins, thrust::host_vector<float> & h_data)
 {		
 	//Reference: http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter

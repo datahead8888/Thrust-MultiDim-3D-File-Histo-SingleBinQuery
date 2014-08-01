@@ -51,15 +51,15 @@ int main(int argc, char *argv[])
 	
 	
 	
-	//const int XSIZE = 600;
-	//const int YSIZE = 248;
-	//const int ZSIZE = 248;
+	const int XSIZE = 600;
+	const int YSIZE = 248;
+	const int ZSIZE = 248;
 	
 	//const int XSIZE = 10;
-	//const int XSIZE = 90;
-	const int XSIZE = 600 * 248 * 248;
-	const int YSIZE = 1;
-	const int ZSIZE = 1;
+	//const int XSIZE = 4;
+	//const int XSIZE = 600 * 248 * 248;
+	//const int YSIZE = 1;
+	//const int ZSIZE = 1;
 
 	const int NUMVARS = 10;
 	//const int NUMVARS = 10;
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
 	//	loadTextFile(inFile, XSIZE, YSIZE, ZSIZE, NUMVARS, 10, h_buffer, bufferSize, xPos, yPos, zPos);
 	//}
 
-	while (loadTextFile(inFile, XSIZE, YSIZE, ZSIZE, NUMVARS, 10, h_buffer, bufferSize, xPos, yPos, zPos))
+	while (loadTextFile(inFile, XSIZE * YSIZE * ZSIZE, 1, 1, NUMVARS, 10, h_buffer, bufferSize, xPos, yPos, zPos))
 	{
 		#ifdef IS_LOGGING
 		cout << "Input data:" << endl;
@@ -124,6 +124,19 @@ int main(int argc, char *argv[])
 	//}
 	//cout << endl;
 	#endif
+
+
+	//Do the query
+	//At this point, we have a single dimensional representation with 1 bin per element, allowing the query with the current specifications
+	
+	//TEST CODE!!!!!!!!!!!!!!
+	//for (int i = 0; i < 64; i++)
+	//{
+	//	h_data[i] = i + 1;
+	//}
+
+
+	doQuery(XSIZE, YSIZE, ZSIZE, 0, 3, 0, 3, 0, 3, h_data, h_data2);
 
 
 	thrust::pair<DVL, DVL> endPosition;

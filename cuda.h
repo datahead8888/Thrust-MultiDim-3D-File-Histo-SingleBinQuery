@@ -30,6 +30,7 @@ void histogramMapReduceGPU(thrust::host_vector<long long> & h_data, thrust::host
 void doHistogramCPU(int xSize, int ySize, int zSize, int numVars, int numBins, thrust::host_vector<float> & h_data);
 void printHistoData(int rows, int cols, int printWidth, thrust::host_vector<long long> & multiDimKeys, thrust::host_vector<long long> & counts);
 int printMinMaxes(string & fileName, int numRecords, int numvars);
+void doQuery(int xSize, int ySize, int zSize, int xMin, int xMax, int yMin, int yMax, int zMin, int zMax, thrust::host_vector<long long> & h_data, thrust::host_vector<long long> & h_data2);
 
 typedef thrust::tuple<int, int, int> Int3;
 typedef thrust::tuple<int, int> Int2;
@@ -178,3 +179,103 @@ struct ZipComparator
 
 
 #endif
+
+//Input: a device_vector of ids (first param in ())
+//	Parameters: xSize, ySize, zSize - dimensions of the grid
+//Output: a second device vector of values (0 for non inclusion, 1 for inclusion)
+struct QueryRange
+{
+	int xSize, ySize, zSize;
+
+	int xMin, yMin, zMin;
+	int xMax, yMax, zMax;
+
+
+	
+	QueryRange(int xSize, int ySize, int zSize, int xMin, int xMax, int yMin, int yMax, int zMin, int zMax)
+	{
+		this -> xSize = xSize;
+		this -> ySize = ySize;
+		this -> zSize = zSize;
+
+		this -> xMin = xMin;
+		this -> xMax = xMax;
+		this -> yMin = yMin;
+		this -> yMax = yMax;
+		this -> zMin = zMin;
+		this -> zMax = zMax;
+	}
+
+
+	//This kernel does query work
+	//0 means use the element.  1 means don't use it.
+	__host__ __device__ long long operator()(const long long & param) const
+	{
+		
+
+		int id = param;
+		long long result = 0;
+
+		//int bin = id; // tempedy temp tempest! --> TEMPORARY!!!!
+
+		int xPos = id % xSize;
+		int yPos = (id / xSize) % ySize;
+		int zPos = id / xSize / ySize;
+
+		if (xPos >= xMin && xPos <= xMax && yPos >= yMin && yPos <= yMax && zPos >= zMin && zPos <= zMax)
+		{
+			result = 1;
+			
+		}
+
+
+
+		//1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+		//0 0 1 1 0 0 1 1 0 0   1  1  0  0  1  1
+
+		
+		return result;
+		//return zPos;
+
+		
+	}
+	
+};
+
+struct StoreQuery
+{
+	long long * rawVector;
+	//int numBins;
+
+	
+	StoreQuery(long long * rawVector)
+	{
+		this -> rawVector = rawVector;
+		//this -> numBins = numBins;
+	}
+
+	//This kernel converts a single dimensional bin representation back to a multidimensional representation
+	template <typename Tuple>
+	__device__ void operator()( Tuple param) 
+	{
+	
+
+		int singleDimIndex = thrust::get<0>(param);
+		//int cols = thrust::get<1>(param);
+		long long dataValue = thrust::get<1>(param);
+		
+		//for (int j = cols - 1; j >= 0; j--)
+		//{
+		//	int moddedValue = dataValue % numBins;
+		//	rawVector[singleDimIndex * cols + j] = moddedValue;
+		//	dataValue /= numBins;
+
+
+		//}
+
+		rawVector[singleDimIndex] = dataValue;
+
+		
+	}
+	
+};
